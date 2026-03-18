@@ -1,0 +1,9 @@
+{
+  "apps": [
+    {
+      "name": "LandTrust Nigeria",
+      "path": "expo",
+      "framework": "react-native"
+    }
+  ]
+}
