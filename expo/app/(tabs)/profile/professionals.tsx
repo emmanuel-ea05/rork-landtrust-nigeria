@@ -1,16 +1,20 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import {
   View,
   Text,
   StyleSheet,
   FlatList,
   TouchableOpacity,
+  Alert,
 } from "react-native";
 import {
   Star,
   MapPin,
   CheckCircle,
   Award,
+  Phone,
+  Shield,
+  Clock,
 } from "lucide-react-native";
 import Colors from "@/constants/colors";
 import { MOCK_PROFESSIONALS } from "@/mocks/data";
@@ -33,6 +37,48 @@ export default function ProfessionalsScreen() {
     return MOCK_PROFESSIONALS.filter((p) => p.type === activeFilter);
   }, [activeFilter]);
 
+  const typeCounts = useMemo(() => {
+    const counts: Record<string, number> = { all: MOCK_PROFESSIONALS.length };
+    MOCK_PROFESSIONALS.forEach((p) => {
+      counts[p.type] = (counts[p.type] || 0) + 1;
+    });
+    return counts;
+  }, []);
+
+  const availableCount = MOCK_PROFESSIONALS.filter((p) => p.available).length;
+  const avgRating = (
+    MOCK_PROFESSIONALS.reduce((sum, p) => sum + p.rating, 0) /
+    MOCK_PROFESSIONALS.length
+  ).toFixed(1);
+  const totalVerified = MOCK_PROFESSIONALS.reduce(
+    (sum, p) => sum + p.completedVerifications,
+    0
+  );
+
+  const handleContact = useCallback((name: string) => {
+    console.log(`[ProfessionalsScreen] Contact: ${name}`);
+    Alert.alert(
+      "Contact Professional",
+      `Would you like to contact ${name}? They will be notified and respond within 24 hours.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Send Request", style: "default" },
+      ]
+    );
+  }, []);
+
+  const handleHire = useCallback((name: string) => {
+    console.log(`[ProfessionalsScreen] Hire: ${name}`);
+    Alert.alert(
+      "Hire Professional",
+      `${name} will be assigned to your next verification request. Proceed?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Hire", style: "default" },
+      ]
+    );
+  }, []);
+
   return (
     <View style={styles.container}>
       <FlatList
@@ -43,8 +89,27 @@ export default function ProfessionalsScreen() {
         ListHeaderComponent={
           <View style={styles.header}>
             <Text style={styles.subtitle}>
-              Verified professionals for your land verification needs in Abuja.
+              Verified professionals for your land verification needs in Abuja
+              FCT. All experts are licensed and background-checked.
             </Text>
+
+            <View style={styles.statsRow}>
+              <View style={styles.statItem}>
+                <Text style={styles.statValue}>{availableCount}</Text>
+                <Text style={styles.statLabel}>Available</Text>
+              </View>
+              <View style={styles.statDivider} />
+              <View style={styles.statItem}>
+                <Text style={styles.statValue}>{avgRating}</Text>
+                <Text style={styles.statLabel}>Avg Rating</Text>
+              </View>
+              <View style={styles.statDivider} />
+              <View style={styles.statItem}>
+                <Text style={styles.statValue}>{totalVerified}</Text>
+                <Text style={styles.statLabel}>Verified</Text>
+              </View>
+            </View>
+
             <FlatList
               horizontal
               data={TYPE_FILTERS}
@@ -67,11 +132,15 @@ export default function ProfessionalsScreen() {
                         styles.filterChipTextActive,
                     ]}
                   >
-                    {item.label}
+                    {item.label} ({typeCounts[item.value] ?? 0})
                   </Text>
                 </TouchableOpacity>
               )}
             />
+
+            <Text style={styles.resultCount}>
+              {filtered.length} professional{filtered.length !== 1 ? "s" : ""}
+            </Text>
           </View>
         }
         renderItem={({ item }) => (
@@ -93,6 +162,12 @@ export default function ProfessionalsScreen() {
                     <View style={styles.availableBadge}>
                       <View style={styles.availableDot} />
                       <Text style={styles.availableText}>Available</Text>
+                    </View>
+                  )}
+                  {!item.available && (
+                    <View style={styles.busyBadge}>
+                      <Clock size={10} color={Colors.textTertiary} />
+                      <Text style={styles.busyText}>Busy</Text>
                     </View>
                   )}
                 </View>
@@ -128,11 +203,43 @@ export default function ProfessionalsScreen() {
               </View>
             </View>
 
-            <TouchableOpacity style={styles.contactButton} activeOpacity={0.7}>
-              <Text style={styles.contactButtonText}>Contact</Text>
-            </TouchableOpacity>
+            <View style={styles.cardActions}>
+              <TouchableOpacity
+                style={styles.contactButton}
+                onPress={() => handleContact(item.name)}
+                activeOpacity={0.7}
+              >
+                <Phone size={14} color={Colors.primary} />
+                <Text style={styles.contactButtonText}>Contact</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.hireButton,
+                  !item.available && styles.hireButtonDisabled,
+                ]}
+                onPress={() => item.available && handleHire(item.name)}
+                activeOpacity={item.available ? 0.7 : 1}
+              >
+                <Shield size={14} color={item.available ? Colors.white : Colors.textTertiary} />
+                <Text
+                  style={[
+                    styles.hireButtonText,
+                    !item.available && styles.hireButtonTextDisabled,
+                  ]}
+                >
+                  {item.available ? "Hire Now" : "Unavailable"}
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
         )}
+        ListEmptyComponent={
+          <View style={styles.emptyState}>
+            <Shield size={32} color={Colors.border} />
+            <Text style={styles.emptyText}>No professionals found</Text>
+            <Text style={styles.emptySub}>Try changing the filter</Text>
+          </View>
+        }
       />
     </View>
   );
@@ -149,13 +256,41 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingTop: 16,
-    paddingBottom: 8,
+    paddingBottom: 4,
   },
   subtitle: {
     fontSize: 14,
     color: Colors.textSecondary,
     lineHeight: 20,
-    marginBottom: 14,
+    marginBottom: 16,
+  },
+  statsRow: {
+    flexDirection: "row",
+    backgroundColor: Colors.card,
+    borderRadius: 14,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+  },
+  statItem: {
+    flex: 1,
+    alignItems: "center",
+  },
+  statValue: {
+    fontSize: 20,
+    fontWeight: "800" as const,
+    color: Colors.text,
+  },
+  statLabel: {
+    fontSize: 11,
+    color: Colors.textTertiary,
+    marginTop: 2,
+    fontWeight: "500" as const,
+  },
+  statDivider: {
+    width: 1,
+    backgroundColor: Colors.borderLight,
   },
   filterList: {
     gap: 8,
@@ -180,6 +315,11 @@ const styles = StyleSheet.create({
   },
   filterChipTextActive: {
     color: Colors.white,
+  },
+  resultCount: {
+    fontSize: 12,
+    color: Colors.textTertiary,
+    marginBottom: 4,
   },
   card: {
     backgroundColor: Colors.card,
@@ -215,6 +355,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
+    flexWrap: "wrap",
   },
   proName: {
     fontSize: 16,
@@ -240,6 +381,20 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: "600" as const,
     color: Colors.success,
+  },
+  busyBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: Colors.border,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  busyText: {
+    fontSize: 10,
+    fontWeight: "600" as const,
+    color: Colors.textTertiary,
   },
   proLicense: {
     fontSize: 12,
@@ -284,15 +439,61 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     fontWeight: "500" as const,
   },
+  cardActions: {
+    flexDirection: "row",
+    gap: 10,
+  },
   contactButton: {
-    backgroundColor: Colors.primary,
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
     paddingVertical: 10,
     borderRadius: 10,
-    alignItems: "center",
+    borderWidth: 1,
+    borderColor: Colors.primary,
+    backgroundColor: Colors.primary + "08",
   },
   contactButtonText: {
     fontSize: 14,
     fontWeight: "600" as const,
+    color: Colors.primary,
+  },
+  hireButton: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    backgroundColor: Colors.primary,
+    paddingVertical: 10,
+    borderRadius: 10,
+  },
+  hireButtonDisabled: {
+    backgroundColor: Colors.border,
+  },
+  hireButtonText: {
+    fontSize: 14,
+    fontWeight: "600" as const,
     color: Colors.white,
+  },
+  hireButtonTextDisabled: {
+    color: Colors.textTertiary,
+  },
+  emptyState: {
+    alignItems: "center",
+    paddingVertical: 48,
+  },
+  emptyText: {
+    fontSize: 16,
+    fontWeight: "600" as const,
+    color: Colors.text,
+    marginTop: 12,
+  },
+  emptySub: {
+    fontSize: 13,
+    color: Colors.textTertiary,
+    marginTop: 4,
   },
 });

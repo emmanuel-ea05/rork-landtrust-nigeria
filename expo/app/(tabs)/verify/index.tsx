@@ -17,6 +17,12 @@ import {
   ChevronDown,
   CheckCircle,
   AlertCircle,
+  Shield,
+  MapPin,
+  User,
+  CreditCard,
+  Info,
+  Lock,
 } from "lucide-react-native";
 import Colors from "@/constants/colors";
 import { DISTRICTS } from "@/mocks/data";
@@ -32,16 +38,29 @@ const DOCUMENT_TYPES: DocumentType[] = [
   "other",
 ];
 
+const DOC_DESCRIPTIONS: Record<DocumentType, string> = {
+  c_of_o: "Official title document issued by the state governor",
+  survey_plan: "Registered survey showing land boundaries & coordinates",
+  deed_of_assignment: "Legal transfer document from seller to buyer",
+  allocation_letter: "Government allocation notice for land grant",
+  other: "Any other supporting document",
+};
+
+const STEP_ICONS = [MapPin, User, FileText, Shield] as const;
+
 export default function VerifyScreen() {
   const [currentStep, setCurrentStep] = useState<Step>(1);
   const [plotNumber, setPlotNumber] = useState("");
   const [selectedDistrict, setSelectedDistrict] = useState("");
   const [surveyNumber, setSurveyNumber] = useState("");
   const [sellerName, setSellerName] = useState("");
+  const [sellerPhone, setSellerPhone] = useState("");
   const [latitude, setLatitude] = useState("");
   const [longitude, setLongitude] = useState("");
   const [selectedDocs, setSelectedDocs] = useState<DocumentType[]>([]);
   const [showDistrictPicker, setShowDistrictPicker] = useState(false);
+  const [additionalNotes, setAdditionalNotes] = useState("");
+  const [urgentRequest, setUrgentRequest] = useState(false);
   const progressAnim = useRef(new Animated.Value(0.25)).current;
 
   const animateProgress = useCallback(
@@ -58,6 +77,7 @@ export default function VerifyScreen() {
 
   const goToStep = useCallback(
     (step: Step) => {
+      console.log(`[VerifyScreen] Moving to step ${step}`);
       setCurrentStep(step);
       animateProgress(step);
     },
@@ -99,11 +119,38 @@ export default function VerifyScreen() {
     }
   }, [currentStep, goToStep]);
 
+  const verificationFee = urgentRequest ? 50000 : 30000;
+
   const handleSubmit = useCallback(() => {
+    console.log("[VerifyScreen] Submitting verification request", {
+      plotNumber,
+      selectedDistrict,
+      sellerName,
+      selectedDocs,
+      urgentRequest,
+    });
     Alert.alert(
       "Verification Submitted",
-      `Your verification request for ${plotNumber} in ${selectedDistrict} has been submitted successfully. You will be notified once a professional is assigned.`,
+      `Your verification request for ${plotNumber} in ${selectedDistrict} has been submitted successfully.\n\nCase ID: VR-${Date.now().toString().slice(-6)}\n\nFee: ₦${verificationFee.toLocaleString()}\n\nYou will be notified once a professional is assigned to your case.`,
       [
+        {
+          text: "View Activity",
+          onPress: () => {
+            console.log("[VerifyScreen] Navigating to activity");
+            setCurrentStep(1);
+            animateProgress(1);
+            setPlotNumber("");
+            setSelectedDistrict("");
+            setSurveyNumber("");
+            setSellerName("");
+            setSellerPhone("");
+            setLatitude("");
+            setLongitude("");
+            setSelectedDocs([]);
+            setAdditionalNotes("");
+            setUrgentRequest(false);
+          },
+        },
         {
           text: "OK",
           onPress: () => {
@@ -113,14 +160,19 @@ export default function VerifyScreen() {
             setSelectedDistrict("");
             setSurveyNumber("");
             setSellerName("");
+            setSellerPhone("");
             setLatitude("");
             setLongitude("");
             setSelectedDocs([]);
+            setAdditionalNotes("");
+            setUrgentRequest(false);
           },
         },
       ]
     );
-  }, [plotNumber, selectedDistrict, animateProgress]);
+  }, [plotNumber, selectedDistrict, sellerName, selectedDocs, urgentRequest, animateProgress, verificationFee]);
+
+  const selectedDistrictData = DISTRICTS.find((d) => d.name === selectedDistrict);
 
   const renderStepIndicator = () => (
     <View style={styles.stepIndicator}>
@@ -138,48 +190,58 @@ export default function VerifyScreen() {
         />
       </View>
       <View style={styles.stepLabels}>
-        {["Location", "Seller", "Documents", "Review"].map((label, i) => (
-          <View key={label} style={styles.stepLabelWrap}>
-            <View
-              style={[
-                styles.stepDot,
-                i + 1 <= currentStep && styles.stepDotActive,
-                i + 1 < currentStep && styles.stepDotCompleted,
-              ]}
-            >
-              {i + 1 < currentStep ? (
-                <CheckCircle size={14} color={Colors.white} />
-              ) : (
-                <Text
-                  style={[
-                    styles.stepDotText,
-                    i + 1 <= currentStep && styles.stepDotTextActive,
-                  ]}
-                >
-                  {i + 1}
-                </Text>
-              )}
+        {["Location", "Seller", "Documents", "Review"].map((label, i) => {
+          const IconComp = STEP_ICONS[i];
+          return (
+            <View key={label} style={styles.stepLabelWrap}>
+              <View
+                style={[
+                  styles.stepDot,
+                  i + 1 <= currentStep && styles.stepDotActive,
+                  i + 1 < currentStep && styles.stepDotCompleted,
+                ]}
+              >
+                {i + 1 < currentStep ? (
+                  <CheckCircle size={14} color={Colors.white} />
+                ) : (
+                  <IconComp
+                    size={13}
+                    color={
+                      i + 1 <= currentStep
+                        ? Colors.white
+                        : Colors.textTertiary
+                    }
+                  />
+                )}
+              </View>
+              <Text
+                style={[
+                  styles.stepLabelText,
+                  i + 1 <= currentStep && styles.stepLabelTextActive,
+                ]}
+              >
+                {label}
+              </Text>
             </View>
-            <Text
-              style={[
-                styles.stepLabelText,
-                i + 1 <= currentStep && styles.stepLabelTextActive,
-              ]}
-            >
-              {label}
-            </Text>
-          </View>
-        ))}
+          );
+        })}
       </View>
     </View>
   );
 
   const renderStep1 = () => (
     <View style={styles.stepContent}>
-      <Text style={styles.stepTitle}>Property Location</Text>
-      <Text style={styles.stepDescription}>
-        Enter the plot details and location of the land you want to verify.
-      </Text>
+      <View style={styles.stepHeaderRow}>
+        <View style={styles.stepIconCircle}>
+          <MapPin size={20} color={Colors.primary} />
+        </View>
+        <View>
+          <Text style={styles.stepTitle}>Property Location</Text>
+          <Text style={styles.stepDescription}>
+            Enter the plot details and location of the land.
+          </Text>
+        </View>
+      </View>
 
       <View style={styles.inputGroup}>
         <Text style={styles.inputLabel}>Plot Number *</Text>
@@ -191,6 +253,9 @@ export default function VerifyScreen() {
           onChangeText={setPlotNumber}
           testID="verify-plot-number"
         />
+        <Text style={styles.inputHint}>
+          Find this on your survey plan or allocation letter
+        </Text>
       </View>
 
       <View style={styles.inputGroup}>
@@ -223,17 +288,26 @@ export default function VerifyScreen() {
                   onPress={() => {
                     setSelectedDistrict(d.name);
                     setShowDistrictPicker(false);
+                    setLatitude(d.coordinates.latitude.toString());
+                    setLongitude(d.coordinates.longitude.toString());
+                    console.log(`[VerifyScreen] Selected district: ${d.name}`);
                   }}
                 >
-                  <Text
-                    style={[
-                      styles.pickerItemText,
-                      selectedDistrict === d.name &&
-                        styles.pickerItemTextActive,
-                    ]}
-                  >
-                    {d.name}
-                  </Text>
+                  <View style={styles.pickerItemContent}>
+                    <Text
+                      style={[
+                        styles.pickerItemText,
+                        selectedDistrict === d.name &&
+                          styles.pickerItemTextActive,
+                      ]}
+                    >
+                      {d.name}
+                    </Text>
+                    <Text style={styles.pickerItemSub}>{d.state}</Text>
+                  </View>
+                  {selectedDistrict === d.name && (
+                    <CheckCircle size={16} color={Colors.primary} />
+                  )}
                 </TouchableOpacity>
               ))}
             </ScrollView>
@@ -276,15 +350,31 @@ export default function VerifyScreen() {
           />
         </View>
       </View>
+
+      {selectedDistrictData && (
+        <View style={styles.coordAutoFill}>
+          <Info size={14} color={Colors.info} />
+          <Text style={styles.coordAutoFillText}>
+            Coordinates auto-filled from selected district. Adjust if needed for exact plot location.
+          </Text>
+        </View>
+      )}
     </View>
   );
 
   const renderStep2 = () => (
     <View style={styles.stepContent}>
-      <Text style={styles.stepTitle}>Seller Information</Text>
-      <Text style={styles.stepDescription}>
-        Provide the name of the person or entity selling the land.
-      </Text>
+      <View style={styles.stepHeaderRow}>
+        <View style={styles.stepIconCircle}>
+          <User size={20} color={Colors.primary} />
+        </View>
+        <View>
+          <Text style={styles.stepTitle}>Seller Information</Text>
+          <Text style={styles.stepDescription}>
+            Provide details of the person or entity selling.
+          </Text>
+        </View>
+      </View>
 
       <View style={styles.inputGroup}>
         <Text style={styles.inputLabel}>Seller Full Name *</Text>
@@ -298,10 +388,41 @@ export default function VerifyScreen() {
         />
       </View>
 
+      <View style={styles.inputGroup}>
+        <Text style={styles.inputLabel}>Seller Phone (Optional)</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="e.g., 08012345678"
+          placeholderTextColor={Colors.textTertiary}
+          value={sellerPhone}
+          onChangeText={setSellerPhone}
+          keyboardType="phone-pad"
+        />
+        <Text style={styles.inputHint}>
+          Helps our team reach the seller for verification
+        </Text>
+      </View>
+
+      <View style={styles.inputGroup}>
+        <Text style={styles.inputLabel}>Additional Notes (Optional)</Text>
+        <TextInput
+          style={[styles.input, styles.textArea]}
+          placeholder="Any additional info about the property or seller..."
+          placeholderTextColor={Colors.textTertiary}
+          value={additionalNotes}
+          onChangeText={setAdditionalNotes}
+          multiline
+          numberOfLines={4}
+          textAlignVertical="top"
+        />
+      </View>
+
       <View style={styles.warningCard}>
         <AlertCircle size={18} color={Colors.warning} />
         <Text style={styles.warningText}>
-          The seller name should match exactly as it appears on the land documents for accurate verification.
+          The seller name should match exactly as it appears on the land
+          documents for accurate verification. Mismatched names may delay the
+          process.
         </Text>
       </View>
     </View>
@@ -309,10 +430,17 @@ export default function VerifyScreen() {
 
   const renderStep3 = () => (
     <View style={styles.stepContent}>
-      <Text style={styles.stepTitle}>Upload Documents</Text>
-      <Text style={styles.stepDescription}>
-        Select the document types you have. You can upload files after submission.
-      </Text>
+      <View style={styles.stepHeaderRow}>
+        <View style={styles.stepIconCircle}>
+          <FileText size={20} color={Colors.primary} />
+        </View>
+        <View>
+          <Text style={styles.stepTitle}>Upload Documents</Text>
+          <Text style={styles.stepDescription}>
+            Select the documents you have available.
+          </Text>
+        </View>
+      </View>
 
       {DOCUMENT_TYPES.map((docType) => {
         const isSelected = selectedDocs.includes(docType);
@@ -333,13 +461,11 @@ export default function VerifyScreen() {
             </View>
             <View style={styles.docInfo}>
               <Text
-                style={[
-                  styles.docName,
-                  isSelected && styles.docNameActive,
-                ]}
+                style={[styles.docName, isSelected && styles.docNameActive]}
               >
                 {DOCUMENT_TYPE_LABELS[docType]}
               </Text>
+              <Text style={styles.docDesc}>{DOC_DESCRIPTIONS[docType]}</Text>
             </View>
             <FileText
               size={18}
@@ -351,17 +477,37 @@ export default function VerifyScreen() {
 
       <TouchableOpacity style={styles.uploadButton} activeOpacity={0.7}>
         <Upload size={20} color={Colors.primary} />
-        <Text style={styles.uploadText}>Upload Document Files</Text>
+        <View>
+          <Text style={styles.uploadText}>Upload Document Files</Text>
+          <Text style={styles.uploadSubtext}>
+            PDF, JPG, PNG — Max 10MB each
+          </Text>
+        </View>
       </TouchableOpacity>
+
+      <View style={styles.docTip}>
+        <Info size={14} color={Colors.info} />
+        <Text style={styles.docTipText}>
+          Clear, legible scans work best. Our team may request additional
+          documents during verification.
+        </Text>
+      </View>
     </View>
   );
 
   const renderStep4 = () => (
     <View style={styles.stepContent}>
-      <Text style={styles.stepTitle}>Review & Submit</Text>
-      <Text style={styles.stepDescription}>
-        Please review your verification request before submitting.
-      </Text>
+      <View style={styles.stepHeaderRow}>
+        <View style={styles.stepIconCircle}>
+          <Shield size={20} color={Colors.primary} />
+        </View>
+        <View>
+          <Text style={styles.stepTitle}>Review & Submit</Text>
+          <Text style={styles.stepDescription}>
+            Confirm your details before submitting.
+          </Text>
+        </View>
+      </View>
 
       <View style={styles.reviewCard}>
         <View style={styles.reviewRow}>
@@ -398,23 +544,94 @@ export default function VerifyScreen() {
           <Text style={styles.reviewLabel}>Seller</Text>
           <Text style={styles.reviewValue}>{sellerName}</Text>
         </View>
+        {sellerPhone ? (
+          <>
+            <View style={styles.reviewDivider} />
+            <View style={styles.reviewRow}>
+              <Text style={styles.reviewLabel}>Seller Phone</Text>
+              <Text style={styles.reviewValue}>{sellerPhone}</Text>
+            </View>
+          </>
+        ) : null}
         <View style={styles.reviewDivider} />
         <View style={styles.reviewRow}>
           <Text style={styles.reviewLabel}>Documents</Text>
           <Text style={styles.reviewValue}>
-            {selectedDocs.length} selected
+            {selectedDocs.map((d) => DOCUMENT_TYPE_LABELS[d]).join(", ")}
           </Text>
         </View>
       </View>
 
+      <TouchableOpacity
+        style={styles.urgentToggle}
+        onPress={() => setUrgentRequest(!urgentRequest)}
+        activeOpacity={0.7}
+      >
+        <View
+          style={[
+            styles.urgentCheckbox,
+            urgentRequest && styles.urgentCheckboxActive,
+          ]}
+        >
+          {urgentRequest && <CheckCircle size={16} color={Colors.white} />}
+        </View>
+        <View style={styles.urgentContent}>
+          <Text style={styles.urgentLabel}>Express Verification</Text>
+          <Text style={styles.urgentDesc}>
+            Priority processing within 48 hours (+₦20,000)
+          </Text>
+        </View>
+      </TouchableOpacity>
+
       <View style={styles.feeCard}>
-        <Text style={styles.feeLabel}>Verification Fee</Text>
-        <Text style={styles.feeAmount}>₦30,000</Text>
+        <View style={styles.feeTop}>
+          <Text style={styles.feeLabel}>Verification Fee</Text>
+          <Text style={styles.feeAmount}>
+            ₦{verificationFee.toLocaleString()}
+          </Text>
+        </View>
+        <View style={styles.feeBreakdown}>
+          <View style={styles.feeRow}>
+            <Text style={styles.feeRowLabel}>Standard verification</Text>
+            <Text style={styles.feeRowValue}>₦30,000</Text>
+          </View>
+          {urgentRequest && (
+            <View style={styles.feeRow}>
+              <Text style={styles.feeRowLabel}>Express processing</Text>
+              <Text style={styles.feeRowValue}>₦20,000</Text>
+            </View>
+          )}
+        </View>
       </View>
 
-      <View style={styles.paymentNote}>
-        <Text style={styles.paymentNoteText}>
-          Payment will be processed via Paystack after submission.
+      <View style={styles.verificationChecks}>
+        <Text style={styles.checksTitle}>What We Verify</Text>
+        {[
+          "Certificate of Occupancy authenticity",
+          "Survey plan coordinates & boundaries",
+          "Ownership history & chain of title",
+          "Government acquisition status",
+          "Court disputes & encumbrances",
+          "Physical land inspection",
+        ].map((check) => (
+          <View key={check} style={styles.checkRow}>
+            <CheckCircle size={14} color={Colors.success} />
+            <Text style={styles.checkText}>{check}</Text>
+          </View>
+        ))}
+      </View>
+
+      <View style={styles.paymentMethods}>
+        <CreditCard size={16} color={Colors.textSecondary} />
+        <Text style={styles.paymentMethodsText}>
+          Pay securely via Paystack — Cards, Bank Transfer, USSD
+        </Text>
+      </View>
+
+      <View style={styles.securityNote}>
+        <Lock size={12} color={Colors.textTertiary} />
+        <Text style={styles.securityNoteText}>
+          Your documents are encrypted and stored securely. NDPC compliant.
         </Text>
       </View>
     </View>
@@ -459,7 +676,9 @@ export default function VerifyScreen() {
           testID="verify-next-button"
         >
           <Text style={styles.nextButtonText}>
-            {currentStep === 4 ? "Submit & Pay ₦30,000" : "Continue"}
+            {currentStep === 4
+              ? `Submit & Pay ₦${verificationFee.toLocaleString()}`
+              : "Continue"}
           </Text>
         </TouchableOpacity>
       </View>
@@ -501,9 +720,9 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   stepDot: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     backgroundColor: Colors.border,
     justifyContent: "center",
     alignItems: "center",
@@ -513,13 +732,6 @@ const styles = StyleSheet.create({
   },
   stepDotCompleted: {
     backgroundColor: Colors.success,
-  },
-  stepDotText: {
-    fontSize: 12,
-    fontWeight: "700" as const,
-  },
-  stepDotTextActive: {
-    color: Colors.white,
   },
   stepLabelText: {
     fontSize: 11,
@@ -534,17 +746,30 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 20,
   },
+  stepHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    marginBottom: 24,
+  },
+  stepIconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: Colors.primary + "12",
+    justifyContent: "center",
+    alignItems: "center",
+  },
   stepTitle: {
     fontSize: 22,
     fontWeight: "800" as const,
     color: Colors.text,
-    marginBottom: 6,
+    marginBottom: 2,
   },
   stepDescription: {
     fontSize: 14,
     color: Colors.textSecondary,
     lineHeight: 20,
-    marginBottom: 24,
   },
   inputGroup: {
     marginBottom: 18,
@@ -563,6 +788,16 @@ const styles = StyleSheet.create({
     color: Colors.text,
     borderWidth: 1,
     borderColor: Colors.border,
+  },
+  textArea: {
+    minHeight: 100,
+    paddingTop: 14,
+  },
+  inputHint: {
+    fontSize: 11,
+    color: Colors.textTertiary,
+    marginTop: 6,
+    fontStyle: "italic" as const,
   },
   selectInput: {
     backgroundColor: Colors.card,
@@ -596,9 +831,15 @@ const styles = StyleSheet.create({
     padding: 14,
     borderBottomWidth: 1,
     borderBottomColor: Colors.borderLight,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   pickerItemActive: {
     backgroundColor: Colors.primary + "10",
+  },
+  pickerItemContent: {
+    flex: 1,
   },
   pickerItemText: {
     fontSize: 14,
@@ -608,9 +849,30 @@ const styles = StyleSheet.create({
     color: Colors.primary,
     fontWeight: "600" as const,
   },
+  pickerItemSub: {
+    fontSize: 11,
+    color: Colors.textTertiary,
+    marginTop: 1,
+  },
   coordinateRow: {
     flexDirection: "row",
     gap: 12,
+  },
+  coordAutoFill: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+    backgroundColor: Colors.info + "10",
+    padding: 12,
+    borderRadius: 10,
+    marginTop: -6,
+    marginBottom: 10,
+  },
+  coordAutoFillText: {
+    flex: 1,
+    fontSize: 12,
+    color: Colors.info,
+    lineHeight: 17,
   },
   warningCard: {
     flexDirection: "row",
@@ -668,12 +930,18 @@ const styles = StyleSheet.create({
   docNameActive: {
     color: Colors.primary,
   },
+  docDesc: {
+    fontSize: 11,
+    color: Colors.textTertiary,
+    marginTop: 2,
+    lineHeight: 15,
+  },
   uploadButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
-    padding: 14,
+    gap: 10,
+    padding: 16,
     borderRadius: 12,
     borderWidth: 2,
     borderColor: Colors.primary + "40",
@@ -684,6 +952,26 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600" as const,
     color: Colors.primary,
+  },
+  uploadSubtext: {
+    fontSize: 11,
+    color: Colors.textTertiary,
+    marginTop: 1,
+  },
+  docTip: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+    marginTop: 12,
+    padding: 12,
+    backgroundColor: Colors.info + "08",
+    borderRadius: 10,
+  },
+  docTipText: {
+    flex: 1,
+    fontSize: 12,
+    color: Colors.textSecondary,
+    lineHeight: 17,
   },
   reviewCard: {
     backgroundColor: Colors.card,
@@ -701,6 +989,7 @@ const styles = StyleSheet.create({
   reviewLabel: {
     fontSize: 13,
     color: Colors.textSecondary,
+    minWidth: 90,
   },
   reviewValue: {
     fontSize: 14,
@@ -715,14 +1004,53 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.borderLight,
     marginVertical: 10,
   },
-  feeCard: {
+  urgentToggle: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
+    gap: 12,
+    backgroundColor: Colors.gold + "10",
+    borderRadius: 14,
+    padding: 16,
+    marginTop: 16,
+    borderWidth: 1,
+    borderColor: Colors.gold + "30",
+  },
+  urgentCheckbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: Colors.gold,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  urgentCheckboxActive: {
+    backgroundColor: Colors.gold,
+    borderColor: Colors.gold,
+  },
+  urgentContent: {
+    flex: 1,
+  },
+  urgentLabel: {
+    fontSize: 14,
+    fontWeight: "700" as const,
+    color: Colors.goldDark,
+  },
+  urgentDesc: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    marginTop: 2,
+  },
+  feeCard: {
     backgroundColor: Colors.primary,
     borderRadius: 14,
     padding: 18,
     marginTop: 16,
+  },
+  feeTop: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   feeLabel: {
     fontSize: 15,
@@ -734,14 +1062,72 @@ const styles = StyleSheet.create({
     color: Colors.gold,
     fontWeight: "800" as const,
   },
-  paymentNote: {
+  feeBreakdown: {
     marginTop: 12,
-    alignItems: "center",
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(255,255,255,0.15)",
   },
-  paymentNoteText: {
+  feeRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 4,
+  },
+  feeRowLabel: {
+    fontSize: 13,
+    color: "rgba(255,255,255,0.6)",
+  },
+  feeRowValue: {
+    fontSize: 13,
+    color: "rgba(255,255,255,0.8)",
+    fontWeight: "600" as const,
+  },
+  verificationChecks: {
+    marginTop: 20,
+    backgroundColor: Colors.card,
+    borderRadius: 14,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+  },
+  checksTitle: {
+    fontSize: 14,
+    fontWeight: "700" as const,
+    color: Colors.text,
+    marginBottom: 12,
+  },
+  checkRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 8,
+  },
+  checkText: {
+    fontSize: 13,
+    color: Colors.textSecondary,
+    flex: 1,
+  },
+  paymentMethods: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    marginTop: 16,
+  },
+  paymentMethodsText: {
     fontSize: 12,
+    color: Colors.textSecondary,
+  },
+  securityNote: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    marginTop: 10,
+  },
+  securityNoteText: {
+    fontSize: 11,
     color: Colors.textTertiary,
-    textAlign: "center" as const,
   },
   bottomBar: {
     flexDirection: "row",

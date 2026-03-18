@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useRef, useEffect } from "react";
 import {
   View,
   Text,
@@ -6,6 +6,8 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
+  Animated,
+  Alert,
 } from "react-native";
 import {
   MapPin,
@@ -14,6 +16,10 @@ import {
   AlertTriangle,
   CheckCircle,
   Info,
+  Crosshair,
+  Layers,
+  Shield,
+  ChevronRight,
 } from "lucide-react-native";
 import Colors from "@/constants/colors";
 import { DISTRICTS } from "@/mocks/data";
@@ -23,25 +29,29 @@ interface MapZone {
   name: string;
   status: "safe" | "caution" | "acquired";
   description: string;
+  lastUpdated: string;
+  plotCount: number;
 }
 
 const MAP_ZONES: MapZone[] = [
-  { id: "z1", name: "Guzape District I", status: "safe", description: "Residential area, titles generally clear" },
-  { id: "z2", name: "Maitama Extension", status: "caution", description: "Some disputed boundaries reported" },
-  { id: "z3", name: "Lugbe Phase 2", status: "acquired", description: "Under government acquisition since 2023" },
-  { id: "z4", name: "Asokoro Extension", status: "safe", description: "Premium residential, well-documented" },
-  { id: "z5", name: "Gwarinpa Phase 4", status: "caution", description: "Mixed ownership claims in some sections" },
-  { id: "z6", name: "Jabi Lake Area", status: "acquired", description: "Partly under FCDA development plan" },
-  { id: "z7", name: "Wuse Zone 5", status: "safe", description: "Commercial zone, titles generally verified" },
-  { id: "z8", name: "Life Camp Extension", status: "caution", description: "Boundary disputes near satellite settlements" },
-  { id: "z9", name: "Kubwa North", status: "safe", description: "Residential expansion area, new allocations" },
-  { id: "z10", name: "Karu / Nyanya Border", status: "acquired", description: "FCT boundary, partial government acquisition" },
+  { id: "z1", name: "Guzape District I", status: "safe", description: "Residential area, titles generally clear", lastUpdated: "2026-03-15", plotCount: 342 },
+  { id: "z2", name: "Maitama Extension", status: "caution", description: "Some disputed boundaries reported near eastern edge", lastUpdated: "2026-03-12", plotCount: 189 },
+  { id: "z3", name: "Lugbe Phase 2", status: "acquired", description: "Under government acquisition since 2023 — FCDA expansion plan", lastUpdated: "2026-03-10", plotCount: 567 },
+  { id: "z4", name: "Asokoro Extension", status: "safe", description: "Premium residential, well-documented titles with AGIS", lastUpdated: "2026-03-16", plotCount: 124 },
+  { id: "z5", name: "Gwarinpa Phase 4", status: "caution", description: "Mixed ownership claims in sections B3–B7", lastUpdated: "2026-03-14", plotCount: 456 },
+  { id: "z6", name: "Jabi Lake Area", status: "acquired", description: "Partly under FCDA development plan — commercial rezoning", lastUpdated: "2026-03-08", plotCount: 78 },
+  { id: "z7", name: "Wuse Zone 5", status: "safe", description: "Commercial zone, titles generally verified with registry", lastUpdated: "2026-03-17", plotCount: 213 },
+  { id: "z8", name: "Life Camp Extension", status: "caution", description: "Boundary disputes near satellite settlements — survey recommended", lastUpdated: "2026-03-11", plotCount: 298 },
+  { id: "z9", name: "Kubwa North", status: "safe", description: "Residential expansion area, new AGIS allocations from 2024", lastUpdated: "2026-03-13", plotCount: 431 },
+  { id: "z10", name: "Karu / Nyanya Border", status: "acquired", description: "FCT boundary zone, partial government acquisition for road project", lastUpdated: "2026-03-09", plotCount: 156 },
+  { id: "z11", name: "Orozo Residential", status: "caution", description: "Rapid development area — some unapproved subdivisions detected", lastUpdated: "2026-03-15", plotCount: 389 },
+  { id: "z12", name: "Idu Industrial", status: "safe", description: "Industrial zone, AGIS-registered allocations, clear titles", lastUpdated: "2026-03-16", plotCount: 92 },
 ];
 
 const STATUS_CONFIG = {
-  safe: { color: Colors.success, Icon: CheckCircle, label: "Clear" },
-  caution: { color: Colors.warning, Icon: AlertTriangle, label: "Caution" },
-  acquired: { color: Colors.danger, Icon: AlertTriangle, label: "Gov. Acquired" },
+  safe: { color: Colors.success, Icon: CheckCircle, label: "Clear", bgColor: Colors.success + "15" },
+  caution: { color: Colors.warning, Icon: AlertTriangle, label: "Caution", bgColor: Colors.warning + "15" },
+  acquired: { color: Colors.danger, Icon: AlertTriangle, label: "Gov. Acquired", bgColor: Colors.danger + "15" },
 } as const;
 
 export default function MapScreen() {
@@ -49,16 +59,55 @@ export default function MapScreen() {
   const [selectedZone, setSelectedZone] = useState<MapZone | null>(null);
   const [coordLat, setCoordLat] = useState("");
   const [coordLng, setCoordLng] = useState("");
+  const [activeStatusFilter, setActiveStatusFilter] = useState<"all" | "safe" | "caution" | "acquired">("all");
+  const resultAnim = useRef(new Animated.Value(0)).current;
 
-  const filteredZones = MAP_ZONES.filter((z) =>
-    z.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  useEffect(() => {
+    if (selectedZone) {
+      resultAnim.setValue(0);
+      Animated.spring(resultAnim, {
+        toValue: 1,
+        tension: 60,
+        friction: 8,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [selectedZone, resultAnim]);
+
+  const filteredZones = MAP_ZONES.filter((z) => {
+    const matchesSearch = z.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesFilter = activeStatusFilter === "all" || z.status === activeStatusFilter;
+    return matchesSearch && matchesFilter;
+  });
+
+  const zoneCounts = {
+    safe: MAP_ZONES.filter((z) => z.status === "safe").length,
+    caution: MAP_ZONES.filter((z) => z.status === "caution").length,
+    acquired: MAP_ZONES.filter((z) => z.status === "acquired").length,
+  };
 
   const handleCheckCoordinates = useCallback(() => {
-    if (!coordLat || !coordLng) return;
+    if (!coordLat || !coordLng) {
+      Alert.alert("Missing Coordinates", "Please enter both latitude and longitude values.");
+      return;
+    }
     const lat = parseFloat(coordLat);
     const lng = parseFloat(coordLng);
-    if (isNaN(lat) || isNaN(lng)) return;
+    if (isNaN(lat) || isNaN(lng)) {
+      Alert.alert("Invalid Coordinates", "Please enter valid numeric coordinates.");
+      return;
+    }
+
+    if (lat < 8.5 || lat > 9.5 || lng < 7.0 || lng > 8.0) {
+      Alert.alert(
+        "Outside Coverage",
+        "These coordinates appear to be outside the Abuja FCT area. LandSecure currently covers Abuja districts only.",
+        [{ text: "OK" }]
+      );
+      return;
+    }
+
+    console.log(`[MapScreen] Checking coordinates: ${lat}, ${lng}`);
 
     const nearestDistrict = DISTRICTS.reduce((nearest, d) => {
       const dist = Math.sqrt(
@@ -83,10 +132,23 @@ export default function MapScreen() {
         id: "custom",
         name: `Near ${nearestDistrict.name}`,
         status: "caution",
-        description: "Coordinate lookup — verify with a surveyor for exact boundary confirmation.",
+        description: "Coordinate lookup — verify with a licensed surveyor for exact boundary confirmation. This area may have mixed status zones.",
+        lastUpdated: new Date().toISOString().split("T")[0],
+        plotCount: 0,
       });
     }
   }, [coordLat, coordLng]);
+
+  const handleVerifyZone = useCallback((zone: MapZone) => {
+    Alert.alert(
+      "Start Verification",
+      `Would you like to start a land verification in ${zone.name}?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Start", style: "default" },
+      ]
+    );
+  }, []);
 
   return (
     <ScrollView
@@ -126,20 +188,41 @@ export default function MapScreen() {
           ))}
         </View>
         <View style={styles.mapOverlay}>
-          <Navigation size={24} color={Colors.primary} />
+          <Navigation size={22} color={Colors.primary} />
           <Text style={styles.mapOverlayText}>Abuja FCT — Land Zone Map</Text>
           <Text style={styles.mapOverlaySubtext}>
-            Interactive GIS mapping coming soon
+            {MAP_ZONES.length} zones tracked · Updated daily
           </Text>
         </View>
       </View>
 
+      <View style={styles.summaryRow}>
+        <View style={[styles.summaryCard, { borderLeftColor: Colors.success }]}>
+          <Text style={[styles.summaryValue, { color: Colors.success }]}>{zoneCounts.safe}</Text>
+          <Text style={styles.summaryLabel}>Clear</Text>
+        </View>
+        <View style={[styles.summaryCard, { borderLeftColor: Colors.warning }]}>
+          <Text style={[styles.summaryValue, { color: Colors.warning }]}>{zoneCounts.caution}</Text>
+          <Text style={styles.summaryLabel}>Caution</Text>
+        </View>
+        <View style={[styles.summaryCard, { borderLeftColor: Colors.danger }]}>
+          <Text style={[styles.summaryValue, { color: Colors.danger }]}>{zoneCounts.acquired}</Text>
+          <Text style={styles.summaryLabel}>Acquired</Text>
+        </View>
+      </View>
+
       <View style={styles.coordSection}>
-        <Text style={styles.sectionTitle}>Check Coordinates</Text>
+        <View style={styles.sectionHeader}>
+          <Crosshair size={18} color={Colors.primary} />
+          <Text style={styles.sectionTitle}>Check Coordinates</Text>
+        </View>
+        <Text style={styles.sectionSubtitle}>
+          Enter GPS coordinates to check land zone status instantly.
+        </Text>
         <View style={styles.coordInputRow}>
           <TextInput
             style={[styles.coordInput, { flex: 1 }]}
-            placeholder="Latitude"
+            placeholder="Latitude (e.g. 9.0234)"
             placeholderTextColor={Colors.textTertiary}
             value={coordLat}
             onChangeText={setCoordLat}
@@ -147,7 +230,7 @@ export default function MapScreen() {
           />
           <TextInput
             style={[styles.coordInput, { flex: 1 }]}
-            placeholder="Longitude"
+            placeholder="Longitude (e.g. 7.5186)"
             placeholderTextColor={Colors.textTertiary}
             value={coordLng}
             onChangeText={setCoordLng}
@@ -163,10 +246,21 @@ export default function MapScreen() {
         </View>
 
         {selectedZone && (
-          <View
+          <Animated.View
             style={[
               styles.zoneResult,
               { borderColor: STATUS_CONFIG[selectedZone.status].color + "40" },
+              {
+                opacity: resultAnim,
+                transform: [
+                  {
+                    translateY: resultAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [10, 0],
+                    }),
+                  },
+                ],
+              },
             ]}
           >
             <View style={styles.zoneResultHeader}>
@@ -197,28 +291,61 @@ export default function MapScreen() {
             <Text style={styles.zoneResultDesc}>
               {selectedZone.description}
             </Text>
-          </View>
+            {selectedZone.plotCount > 0 && (
+              <View style={styles.zoneResultMeta}>
+                <Text style={styles.zoneResultMetaText}>
+                  {selectedZone.plotCount} plots in area · Updated {selectedZone.lastUpdated}
+                </Text>
+              </View>
+            )}
+            <TouchableOpacity
+              style={styles.zoneVerifyBtn}
+              onPress={() => handleVerifyZone(selectedZone)}
+              activeOpacity={0.7}
+            >
+              <Shield size={14} color={Colors.primary} />
+              <Text style={styles.zoneVerifyText}>Verify Property Here</Text>
+              <ChevronRight size={14} color={Colors.primary} />
+            </TouchableOpacity>
+          </Animated.View>
         )}
       </View>
 
       <View style={styles.legendSection}>
-        <Text style={styles.sectionTitle}>Zone Legend</Text>
-        <View style={styles.legendRow}>
-          <View style={[styles.legendDot, { backgroundColor: Colors.success }]} />
-          <Text style={styles.legendText}>Clear — No known acquisition</Text>
+        <View style={styles.sectionHeader}>
+          <Layers size={18} color={Colors.primary} />
+          <Text style={styles.sectionTitle}>Zone Legend</Text>
         </View>
-        <View style={styles.legendRow}>
-          <View style={[styles.legendDot, { backgroundColor: Colors.warning }]} />
-          <Text style={styles.legendText}>Caution — Disputed or mixed claims</Text>
-        </View>
-        <View style={styles.legendRow}>
-          <View style={[styles.legendDot, { backgroundColor: Colors.danger }]} />
-          <Text style={styles.legendText}>Acquired — Government acquisition</Text>
+        <View style={styles.legendGrid}>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendDot, { backgroundColor: Colors.success }]} />
+            <View>
+              <Text style={styles.legendLabel}>Clear</Text>
+              <Text style={styles.legendDesc}>No known acquisition or disputes</Text>
+            </View>
+          </View>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendDot, { backgroundColor: Colors.warning }]} />
+            <View>
+              <Text style={styles.legendLabel}>Caution</Text>
+              <Text style={styles.legendDesc}>Disputed boundaries or mixed claims</Text>
+            </View>
+          </View>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendDot, { backgroundColor: Colors.danger }]} />
+            <View>
+              <Text style={styles.legendLabel}>Gov. Acquired</Text>
+              <Text style={styles.legendDesc}>Government acquisition in effect</Text>
+            </View>
+          </View>
         </View>
       </View>
 
       <View style={styles.zonesSection}>
-        <Text style={styles.sectionTitle}>Abuja Land Zones</Text>
+        <View style={styles.sectionHeader}>
+          <MapPin size={18} color={Colors.primary} />
+          <Text style={styles.sectionTitle}>Abuja Land Zones</Text>
+        </View>
         <View style={styles.searchBar}>
           <Search size={16} color={Colors.textTertiary} />
           <TextInput
@@ -230,6 +357,42 @@ export default function MapScreen() {
           />
         </View>
 
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.statusFilterRow}
+        >
+          {([
+            { label: "All", value: "all" as const },
+            { label: `Clear (${zoneCounts.safe})`, value: "safe" as const },
+            { label: `Caution (${zoneCounts.caution})`, value: "caution" as const },
+            { label: `Acquired (${zoneCounts.acquired})`, value: "acquired" as const },
+          ]).map((f) => (
+            <TouchableOpacity
+              key={f.value}
+              style={[
+                styles.statusFilterChip,
+                activeStatusFilter === f.value && styles.statusFilterChipActive,
+              ]}
+              onPress={() => setActiveStatusFilter(f.value)}
+              activeOpacity={0.7}
+            >
+              <Text
+                style={[
+                  styles.statusFilterText,
+                  activeStatusFilter === f.value && styles.statusFilterTextActive,
+                ]}
+              >
+                {f.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+
+        <Text style={styles.zoneCount}>
+          {filteredZones.length} zone{filteredZones.length !== 1 ? "s" : ""} found
+        </Text>
+
         {filteredZones.map((zone) => {
           const config = STATUS_CONFIG[zone.status];
           return (
@@ -239,10 +402,20 @@ export default function MapScreen() {
               onPress={() => setSelectedZone(zone)}
               activeOpacity={0.7}
             >
-              <View style={[styles.zoneIndicator, { backgroundColor: config.color }]} />
+              <View
+                style={[
+                  styles.zoneIndicator,
+                  { backgroundColor: config.color },
+                ]}
+              />
               <View style={styles.zoneInfo}>
                 <Text style={styles.zoneName}>{zone.name}</Text>
                 <Text style={styles.zoneDesc}>{zone.description}</Text>
+                <View style={styles.zoneMetaRow}>
+                  <Text style={styles.zoneMetaText}>
+                    {zone.plotCount} plots · {zone.lastUpdated}
+                  </Text>
+                </View>
               </View>
               <View
                 style={[
@@ -257,12 +430,19 @@ export default function MapScreen() {
             </TouchableOpacity>
           );
         })}
+
+        {filteredZones.length === 0 && (
+          <View style={styles.emptyZones}>
+            <MapPin size={28} color={Colors.border} />
+            <Text style={styles.emptyZonesText}>No zones match your search</Text>
+          </View>
+        )}
       </View>
 
       <View style={styles.disclaimerCard}>
         <Info size={16} color={Colors.info} />
         <Text style={styles.disclaimerText}>
-          Zone statuses are based on available data and may not reflect real-time changes. Always verify with AGIS and a licensed surveyor.
+          Zone statuses are based on available data from AGIS and field reports. They may not reflect real-time changes. Always verify with AGIS and a licensed surveyor before purchasing.
         </Text>
       </View>
 
@@ -328,15 +508,53 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: Colors.textTertiary,
   },
+  summaryRow: {
+    flexDirection: "row",
+    paddingHorizontal: 16,
+    gap: 10,
+    marginTop: 16,
+  },
+  summaryCard: {
+    flex: 1,
+    backgroundColor: Colors.card,
+    borderRadius: 12,
+    padding: 14,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+    borderLeftWidth: 3,
+  },
+  summaryValue: {
+    fontSize: 22,
+    fontWeight: "800" as const,
+  },
+  summaryLabel: {
+    fontSize: 11,
+    color: Colors.textTertiary,
+    marginTop: 2,
+    fontWeight: "500" as const,
+  },
   coordSection: {
     paddingHorizontal: 16,
     marginTop: 24,
+  },
+  sectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 4,
   },
   sectionTitle: {
     fontSize: 17,
     fontWeight: "700" as const,
     color: Colors.text,
+  },
+  sectionSubtitle: {
+    fontSize: 13,
+    color: Colors.textSecondary,
     marginBottom: 12,
+    marginTop: 4,
+    lineHeight: 18,
   },
   coordInputRow: {
     flexDirection: "row",
@@ -391,24 +609,61 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     lineHeight: 19,
   },
+  zoneResultMeta: {
+    marginTop: 8,
+  },
+  zoneResultMetaText: {
+    fontSize: 11,
+    color: Colors.textTertiary,
+  },
+  zoneVerifyBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    marginTop: 12,
+    paddingVertical: 10,
+    backgroundColor: Colors.primary + "10",
+    borderRadius: 10,
+  },
+  zoneVerifyText: {
+    fontSize: 13,
+    fontWeight: "600" as const,
+    color: Colors.primary,
+  },
   legendSection: {
     paddingHorizontal: 16,
     marginTop: 24,
   },
-  legendRow: {
-    flexDirection: "row",
-    alignItems: "center",
+  legendGrid: {
     gap: 10,
-    marginBottom: 8,
+    marginTop: 10,
+  },
+  legendItem: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+    backgroundColor: Colors.card,
+    borderRadius: 10,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
   },
   legendDot: {
     width: 10,
     height: 10,
     borderRadius: 5,
+    marginTop: 3,
   },
-  legendText: {
+  legendLabel: {
     fontSize: 13,
-    color: Colors.textSecondary,
+    fontWeight: "600" as const,
+    color: Colors.text,
+  },
+  legendDesc: {
+    fontSize: 12,
+    color: Colors.textTertiary,
+    marginTop: 1,
   },
   zonesSection: {
     paddingHorizontal: 16,
@@ -420,7 +675,8 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.card,
     borderRadius: 12,
     paddingHorizontal: 12,
-    marginBottom: 12,
+    marginTop: 10,
+    marginBottom: 10,
     borderWidth: 1,
     borderColor: Colors.border,
     gap: 8,
@@ -430,6 +686,35 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     fontSize: 14,
     color: Colors.text,
+  },
+  statusFilterRow: {
+    gap: 8,
+    paddingBottom: 10,
+  },
+  statusFilterChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 20,
+    backgroundColor: Colors.card,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  statusFilterChipActive: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+  },
+  statusFilterText: {
+    fontSize: 12,
+    fontWeight: "600" as const,
+    color: Colors.textSecondary,
+  },
+  statusFilterTextActive: {
+    color: Colors.white,
+  },
+  zoneCount: {
+    fontSize: 12,
+    color: Colors.textTertiary,
+    marginBottom: 10,
   },
   zoneCard: {
     flexDirection: "row",
@@ -444,7 +729,7 @@ const styles = StyleSheet.create({
   },
   zoneIndicator: {
     width: 4,
-    height: 36,
+    height: 44,
     borderRadius: 2,
   },
   zoneInfo: {
@@ -459,6 +744,24 @@ const styles = StyleSheet.create({
   zoneDesc: {
     fontSize: 12,
     color: Colors.textTertiary,
+    lineHeight: 16,
+  },
+  zoneMetaRow: {
+    marginTop: 4,
+  },
+  zoneMetaText: {
+    fontSize: 10,
+    color: Colors.textTertiary,
+    fontWeight: "500" as const,
+  },
+  emptyZones: {
+    alignItems: "center",
+    paddingVertical: 32,
+  },
+  emptyZonesText: {
+    fontSize: 14,
+    color: Colors.textTertiary,
+    marginTop: 8,
   },
   disclaimerCard: {
     marginHorizontal: 16,

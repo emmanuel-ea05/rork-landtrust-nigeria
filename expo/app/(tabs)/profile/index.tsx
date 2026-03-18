@@ -5,6 +5,7 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  Alert,
 } from "react-native";
 import { useRouter } from "expo-router";
 import {
@@ -18,9 +19,15 @@ import {
   LogOut,
   Star,
   FileCheck,
+  Mail,
+  Phone,
+  Globe,
+  Lock,
+  MessageCircle,
+  Award,
 } from "lucide-react-native";
 import Colors from "@/constants/colors";
-import { MOCK_VERIFICATIONS } from "@/mocks/data";
+import { MOCK_VERIFICATIONS, MOCK_PROFESSIONALS } from "@/mocks/data";
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -28,9 +35,35 @@ export default function ProfileScreen() {
   const completedVerifications = MOCK_VERIFICATIONS.filter(
     (v) => v.status === "completed"
   ).length;
+  const totalSpent = MOCK_VERIFICATIONS.filter((v) => v.paid).reduce(
+    (sum, v) => sum + v.fee,
+    0
+  );
 
   const handleProfessionals = useCallback(() => {
     router.push("/(tabs)/profile/professionals");
+  }, [router]);
+
+  const handleSignOut = useCallback(() => {
+    Alert.alert(
+      "Sign Out",
+      "Are you sure you want to sign out of LandSecure?",
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Sign Out", style: "destructive" },
+      ]
+    );
+  }, []);
+
+  const handleMenuItem = useCallback((label: string) => {
+    console.log(`[ProfileScreen] Menu item pressed: ${label}`);
+    if (label === "My Verifications") {
+      router.push("/(tabs)/activity");
+    } else if (label === "Professional Network") {
+      router.push("/(tabs)/profile/professionals");
+    } else {
+      Alert.alert(label, "This feature is coming soon.");
+    }
   }, [router]);
 
   return (
@@ -53,11 +86,19 @@ export default function ProfileScreen() {
           <View style={styles.userTypeBadge}>
             <Text style={styles.userTypeText}>Buyer</Text>
           </View>
+          <View style={styles.memberBadge}>
+            <Award size={10} color={Colors.gold} />
+            <Text style={styles.memberText}>Member since 2026</Text>
+          </View>
         </View>
         <View style={styles.contactRow}>
           <View style={styles.contactItem}>
             <MapPin size={13} color={Colors.goldLight} />
             <Text style={styles.contactText}>Abuja, Nigeria</Text>
+          </View>
+          <View style={styles.contactItem}>
+            <Mail size={13} color={Colors.goldLight} />
+            <Text style={styles.contactText}>guest@email.com</Text>
           </View>
         </View>
       </View>
@@ -69,13 +110,17 @@ export default function ProfileScreen() {
         </View>
         <View style={styles.statDivider} />
         <View style={styles.statItem}>
-          <Text style={styles.statValue}>{completedVerifications}</Text>
+          <Text style={[styles.statValue, { color: Colors.success }]}>
+            {completedVerifications}
+          </Text>
           <Text style={styles.statLabel}>Completed</Text>
         </View>
         <View style={styles.statDivider} />
         <View style={styles.statItem}>
-          <Text style={styles.statValue}>0</Text>
-          <Text style={styles.statLabel}>Properties</Text>
+          <Text style={styles.statValue}>
+            ₦{(totalSpent / 1000).toFixed(0)}k
+          </Text>
+          <Text style={styles.statLabel}>Spent</Text>
         </View>
       </View>
 
@@ -84,53 +129,85 @@ export default function ProfileScreen() {
         <MenuItem
           icon={<Users size={20} color={Colors.primary} />}
           label="Professional Network"
-          sublabel="Surveyors, lawyers & inspectors"
+          sublabel={`${MOCK_PROFESSIONALS.length} verified experts`}
           onPress={handleProfessionals}
         />
         <MenuItem
           icon={<FileCheck size={20} color={Colors.success} />}
           label="My Verifications"
-          sublabel={`${totalVerifications} total requests`}
-          onPress={() => router.push("/(tabs)/activity")}
+          sublabel={`${totalVerifications} total, ${completedVerifications} completed`}
+          onPress={() => handleMenuItem("My Verifications")}
         />
         <MenuItem
           icon={<Star size={20} color={Colors.gold} />}
           label="Verified Properties"
-          sublabel="Properties you've verified"
-          onPress={() => {}}
+          sublabel={`${completedVerifications} properties verified`}
+          onPress={() => handleMenuItem("Verified Properties")}
+        />
+        <MenuItem
+          icon={<Globe size={20} color={Colors.info} />}
+          label="Diaspora Services"
+          sublabel="Remote verification & monitoring"
+          onPress={() => handleMenuItem("Diaspora Services")}
         />
       </View>
 
       <View style={styles.menuSection}>
         <Text style={styles.menuTitle}>Account</Text>
         <MenuItem
-          icon={<Bell size={20} color={Colors.info} />}
+          icon={<Bell size={20} color={Colors.warning} />}
           label="Notifications"
           sublabel="Verification updates & alerts"
-          onPress={() => {}}
+          onPress={() => handleMenuItem("Notifications")}
+          badge={2}
         />
         <MenuItem
-          icon={<Shield size={20} color={Colors.primary} />}
+          icon={<Lock size={20} color={Colors.primary} />}
           label="Security & Privacy"
           sublabel="Data protection settings"
-          onPress={() => {}}
+          onPress={() => handleMenuItem("Security & Privacy")}
         />
         <MenuItem
-          icon={<HelpCircle size={20} color={Colors.textSecondary} />}
-          label="Help & Support"
-          sublabel="FAQs and contact us"
-          onPress={() => {}}
+          icon={<Phone size={20} color={Colors.success} />}
+          label="Payment Methods"
+          sublabel="Cards, bank transfer & USSD"
+          onPress={() => handleMenuItem("Payment Methods")}
         />
       </View>
 
-      <TouchableOpacity style={styles.logoutButton} activeOpacity={0.7}>
+      <View style={styles.menuSection}>
+        <Text style={styles.menuTitle}>Support</Text>
+        <MenuItem
+          icon={<MessageCircle size={20} color={Colors.info} />}
+          label="Live Chat"
+          sublabel="Chat with our support team"
+          onPress={() => handleMenuItem("Live Chat")}
+        />
+        <MenuItem
+          icon={<HelpCircle size={20} color={Colors.textSecondary} />}
+          label="Help & FAQ"
+          sublabel="Common questions answered"
+          onPress={() => handleMenuItem("Help & FAQ")}
+        />
+      </View>
+
+      <TouchableOpacity
+        style={styles.logoutButton}
+        activeOpacity={0.7}
+        onPress={handleSignOut}
+      >
         <LogOut size={18} color={Colors.danger} />
         <Text style={styles.logoutText}>Sign Out</Text>
       </TouchableOpacity>
 
       <View style={styles.versionInfo}>
-        <Text style={styles.versionText}>LandTrust Nigeria v1.0.0</Text>
-        <Text style={styles.versionSubtext}>Verify Land Before You Buy.</Text>
+        <Text style={styles.versionText}>LandSecure v1.0.0</Text>
+        <Text style={styles.versionSubtext}>
+          Verify Land Before You Buy.
+        </Text>
+        <Text style={styles.versionCompany}>
+          NDPC Compliant · Powered by LandSecure Nigeria
+        </Text>
       </View>
 
       <View style={styles.bottomSpacer} />
@@ -143,11 +220,13 @@ function MenuItem({
   label,
   sublabel,
   onPress,
+  badge,
 }: {
   icon: React.ReactNode;
   label: string;
   sublabel: string;
   onPress: () => void;
+  badge?: number;
 }) {
   return (
     <TouchableOpacity
@@ -160,6 +239,11 @@ function MenuItem({
         <Text style={styles.menuLabel}>{label}</Text>
         <Text style={styles.menuSublabel}>{sublabel}</Text>
       </View>
+      {badge !== undefined && badge > 0 && (
+        <View style={styles.badgeCircle}>
+          <Text style={styles.badgeText}>{badge}</Text>
+        </View>
+      )}
       <ChevronRight size={18} color={Colors.textTertiary} />
     </TouchableOpacity>
   );
@@ -212,10 +296,13 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: "800" as const,
     color: Colors.white,
-    marginBottom: 6,
+    marginBottom: 8,
   },
   userTypeRow: {
-    marginBottom: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 12,
   },
   userTypeBadge: {
     backgroundColor: Colors.gold + "30",
@@ -228,9 +315,25 @@ const styles = StyleSheet.create({
     fontWeight: "700" as const,
     color: Colors.gold,
   },
+  memberBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "rgba(255,255,255,0.1)",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  memberText: {
+    fontSize: 11,
+    color: Colors.goldLight,
+    fontWeight: "500" as const,
+  },
   contactRow: {
     flexDirection: "row",
     gap: 16,
+    flexWrap: "wrap",
+    justifyContent: "center",
   },
   contactItem: {
     flexDirection: "row",
@@ -313,6 +416,19 @@ const styles = StyleSheet.create({
     color: Colors.textTertiary,
     marginTop: 2,
   },
+  badgeCircle: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: Colors.danger,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  badgeText: {
+    fontSize: 11,
+    fontWeight: "700" as const,
+    color: Colors.white,
+  },
   logoutButton: {
     flexDirection: "row",
     alignItems: "center",
@@ -334,16 +450,22 @@ const styles = StyleSheet.create({
   versionInfo: {
     alignItems: "center",
     marginTop: 24,
+    gap: 2,
   },
   versionText: {
     fontSize: 12,
     color: Colors.textTertiary,
+    fontWeight: "600" as const,
   },
   versionSubtext: {
     fontSize: 11,
     color: Colors.textTertiary,
     fontStyle: "italic" as const,
-    marginTop: 2,
+  },
+  versionCompany: {
+    fontSize: 10,
+    color: Colors.textTertiary,
+    marginTop: 4,
   },
   bottomSpacer: {
     height: 20,

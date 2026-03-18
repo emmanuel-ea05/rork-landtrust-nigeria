@@ -13,7 +13,7 @@ export default function HomeLayout() {
     >
       <Stack.Screen
         name="index"
-        options={{ title: "LandTrust Nigeria" }}
+        options={{ title: "LandSecure" }}
       />
     </Stack>
   );

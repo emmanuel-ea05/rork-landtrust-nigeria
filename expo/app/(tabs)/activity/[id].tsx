@@ -6,16 +6,22 @@ import {
   ScrollView,
   TouchableOpacity,
   Animated,
+  Alert,
+  Share,
 } from "react-native";
 import { useLocalSearchParams, Stack } from "expo-router";
 import {
   MapPin,
   FileText,
-  User,
   AlertTriangle,
   CheckCircle,
   Download,
   Clock,
+  Phone,
+  Share2,
+  Copy,
+  Calendar,
+  DollarSign,
 } from "lucide-react-native";
 import Colors from "@/constants/colors";
 import { MOCK_VERIFICATIONS, MOCK_PROFESSIONALS } from "@/mocks/data";
@@ -34,6 +40,24 @@ const PIPELINE_STEPS: VerificationStatus[] = [
   "field_inspection",
   "completed",
 ];
+
+const STEP_DESCRIPTIONS: Record<string, string> = {
+  submitted: "Your request has been received and is in the queue.",
+  under_review: "A team member is reviewing your submitted documents.",
+  survey_check: "A licensed surveyor is verifying coordinates and boundaries.",
+  legal_review: "A lawyer is checking title authenticity and ownership chain.",
+  field_inspection: "A field inspector is visiting the physical location.",
+  completed: "All checks complete. Your report is ready.",
+};
+
+const ESTIMATED_TIMES: Record<string, string> = {
+  submitted: "1-2 hours",
+  under_review: "24-48 hours",
+  survey_check: "2-3 days",
+  legal_review: "3-5 days",
+  field_inspection: "1-2 days",
+  completed: "Done",
+};
 
 export default function VerificationDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -67,21 +91,73 @@ export default function VerificationDetailScreen() {
     );
   }, [verification]);
 
+  const handleShare = async () => {
+    if (!verification) return;
+    try {
+      await Share.share({
+        message: `LandSecure Verification ${verification.id}\nPlot: ${verification.plotNumber}\nDistrict: ${verification.district}, ${verification.state}\nStatus: ${STATUS_LABELS[verification.status]}`,
+      });
+    } catch (error) {
+      console.log("[VerificationDetail] Share error:", error);
+    }
+  };
+
+  const handleCopyId = () => {
+    if (!verification) return;
+    Alert.alert("Copied", `Case ID ${verification.id} copied to clipboard.`);
+  };
+
+  const handleDownloadReport = () => {
+    Alert.alert(
+      "Download Report",
+      "Your verification report PDF will be generated and downloaded.",
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Download", style: "default" },
+      ]
+    );
+  };
+
+  const handleContactPro = (name: string) => {
+    Alert.alert(
+      "Contact Professional",
+      `Would you like to contact ${name} about this verification?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Contact", style: "default" },
+      ]
+    );
+  };
+
   if (!verification) {
     return (
       <View style={styles.notFound}>
         <Text style={styles.notFoundText}>Verification not found</Text>
+        <Text style={styles.notFoundSub}>
+          This case may have been removed or the ID is invalid.
+        </Text>
       </View>
     );
   }
 
   const isFlagged = verification.status === "flagged";
+  const isCompleted = verification.status === "completed";
   const riskColor =
     (verification.riskScore ?? 0) > 60
       ? Colors.danger
       : (verification.riskScore ?? 0) > 30
       ? Colors.warning
       : Colors.success;
+  const riskLabel =
+    (verification.riskScore ?? 0) > 60
+      ? "High Risk"
+      : (verification.riskScore ?? 0) > 30
+      ? "Medium Risk"
+      : "Low Risk";
+
+  const daysSinceSubmission = Math.floor(
+    (Date.now() - new Date(verification.createdAt).getTime()) / (1000 * 60 * 60 * 24)
+  );
 
   return (
     <>
@@ -93,7 +169,7 @@ export default function VerificationDetailScreen() {
       >
         <View style={styles.headerCard}>
           <View style={styles.headerTop}>
-            <View>
+            <View style={styles.headerTitleArea}>
               <Text style={styles.plotNumber}>{verification.plotNumber}</Text>
               <View style={styles.locationRow}>
                 <MapPin size={13} color={Colors.goldLight} />
@@ -105,9 +181,33 @@ export default function VerificationDetailScreen() {
             <StatusBadge status={verification.status} size="medium" />
           </View>
 
+          <View style={styles.headerActions}>
+            <TouchableOpacity
+              style={styles.headerAction}
+              onPress={handleCopyId}
+              activeOpacity={0.7}
+            >
+              <Copy size={14} color={Colors.goldLight} />
+              <Text style={styles.headerActionText}>{verification.id}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.headerAction}
+              onPress={handleShare}
+              activeOpacity={0.7}
+            >
+              <Share2 size={14} color={Colors.goldLight} />
+              <Text style={styles.headerActionText}>Share</Text>
+            </TouchableOpacity>
+          </View>
+
           {verification.riskScore !== undefined && (
             <View style={styles.riskSection}>
-              <Text style={styles.riskLabel}>Risk Score</Text>
+              <View style={styles.riskLabelRow}>
+                <Text style={styles.riskLabel}>Risk Score</Text>
+                <Text style={[styles.riskBadge, { color: riskColor }]}>
+                  {riskLabel}
+                </Text>
+              </View>
               <View style={styles.riskBarTrack}>
                 <View
                   style={[
@@ -124,6 +224,39 @@ export default function VerificationDetailScreen() {
               </Text>
             </View>
           )}
+        </View>
+
+        <View style={styles.timelineCard}>
+          <View style={styles.timelineRow}>
+            <View style={styles.timelineItem}>
+              <Calendar size={14} color={Colors.textTertiary} />
+              <View>
+                <Text style={styles.timelineLabel}>Submitted</Text>
+                <Text style={styles.timelineValue}>
+                  {new Date(verification.createdAt).toLocaleDateString("en-NG", {
+                    day: "numeric",
+                    month: "short",
+                  })}
+                </Text>
+              </View>
+            </View>
+            <View style={styles.timelineItem}>
+              <Clock size={14} color={Colors.textTertiary} />
+              <View>
+                <Text style={styles.timelineLabel}>Duration</Text>
+                <Text style={styles.timelineValue}>{daysSinceSubmission} days</Text>
+              </View>
+            </View>
+            <View style={styles.timelineItem}>
+              <DollarSign size={14} color={Colors.textTertiary} />
+              <View>
+                <Text style={styles.timelineLabel}>Fee</Text>
+                <Text style={styles.timelineValue}>
+                  ₦{verification.fee.toLocaleString()}
+                </Text>
+              </View>
+            </View>
+          </View>
         </View>
 
         {!isFlagged && (
@@ -160,7 +293,9 @@ export default function VerificationDetailScreen() {
                         <View
                           style={[
                             styles.pipelineLine,
-                            isActive && i < currentStepIndex && styles.pipelineLineActive,
+                            isActive &&
+                              i < currentStepIndex &&
+                              styles.pipelineLineActive,
                           ]}
                         />
                       )}
@@ -176,12 +311,23 @@ export default function VerificationDetailScreen() {
                         {STATUS_LABELS[step]}
                       </Text>
                       {isCurrent && (
-                        <View style={styles.currentBadge}>
-                          <Clock size={10} color={Colors.primary} />
-                          <Text style={styles.currentBadgeText}>
-                            In Progress
+                        <>
+                          <View style={styles.currentBadge}>
+                            <Clock size={10} color={Colors.primary} />
+                            <Text style={styles.currentBadgeText}>
+                              In Progress
+                            </Text>
+                          </View>
+                          <Text style={styles.stepDesc}>
+                            {STEP_DESCRIPTIONS[step]}
                           </Text>
-                        </View>
+                          <Text style={styles.stepEta}>
+                            Est. {ESTIMATED_TIMES[step]}
+                          </Text>
+                        </>
+                      )}
+                      {i < currentStepIndex && (
+                        <Text style={styles.stepCompleted}>Completed</Text>
                       )}
                     </View>
                   </View>
@@ -198,8 +344,14 @@ export default function VerificationDetailScreen() {
               <Text style={styles.flaggedTitle}>Issues Detected</Text>
               <Text style={styles.flaggedText}>
                 This property has been flagged due to verification concerns.
-                Review the report below for details.
+                Our team has identified potential problems with the title or
+                ownership. Review the full report below for details.
               </Text>
+              <View style={styles.flaggedActions}>
+                <TouchableOpacity style={styles.flaggedAction} activeOpacity={0.7}>
+                  <Text style={styles.flaggedActionText}>Contact Support</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
         )}
@@ -213,7 +365,10 @@ export default function VerificationDetailScreen() {
               value={`${verification.district}, ${verification.state}`}
             />
             {verification.surveyNumber && (
-              <DetailRow label="Survey Number" value={verification.surveyNumber} />
+              <DetailRow
+                label="Survey Number"
+                value={verification.surveyNumber}
+              />
             )}
             {verification.coordinates && (
               <DetailRow
@@ -230,9 +385,21 @@ export default function VerificationDetailScreen() {
               )}
             />
             <DetailRow
+              label="Last Updated"
+              value={new Date(verification.updatedAt).toLocaleDateString(
+                "en-NG",
+                { day: "numeric", month: "long", year: "numeric" }
+              )}
+            />
+            <DetailRow
               label="Fee"
               value={`₦${verification.fee.toLocaleString()}`}
+            />
+            <DetailRow
+              label="Payment"
+              value={verification.paid ? "Paid" : "Pending"}
               isLast
+              valueColor={verification.paid ? Colors.success : Colors.warning}
             />
           </View>
         </View>
@@ -243,12 +410,21 @@ export default function VerificationDetailScreen() {
           </Text>
           {verification.documents.map((doc) => (
             <View key={doc.id} style={styles.docCard}>
-              <FileText size={18} color={Colors.primary} />
+              <View style={styles.docIconWrap}>
+                <FileText size={18} color={Colors.primary} />
+              </View>
               <View style={styles.docInfo}>
                 <Text style={styles.docName}>
                   {DOCUMENT_TYPE_LABELS[doc.type]}
                 </Text>
                 <Text style={styles.docFile}>{doc.name}</Text>
+                <Text style={styles.docDate}>
+                  Uploaded{" "}
+                  {new Date(doc.uploadedAt).toLocaleDateString("en-NG", {
+                    day: "numeric",
+                    month: "short",
+                  })}
+                </Text>
               </View>
             </View>
           ))}
@@ -256,16 +432,32 @@ export default function VerificationDetailScreen() {
 
         {assignedPros.length > 0 && (
           <View style={styles.prosSection}>
-            <Text style={styles.sectionTitle}>Assigned Professionals</Text>
+            <Text style={styles.sectionTitle}>
+              Assigned Professionals ({assignedPros.length})
+            </Text>
             {assignedPros.map((pro) => (
               <View key={pro.id} style={styles.proCard}>
                 <View style={styles.proAvatar}>
-                  <User size={18} color={Colors.primary} />
+                  <Text style={styles.proInitials}>
+                    {pro.name
+                      .split(" ")
+                      .slice(-2)
+                      .map((n) => n[0])
+                      .join("")}
+                  </Text>
                 </View>
                 <View style={styles.proInfo}>
                   <Text style={styles.proName}>{pro.name}</Text>
                   <Text style={styles.proType}>{pro.specialization}</Text>
+                  <Text style={styles.proLicense}>{pro.license}</Text>
                 </View>
+                <TouchableOpacity
+                  style={styles.proContactBtn}
+                  onPress={() => handleContactPro(pro.name)}
+                  activeOpacity={0.7}
+                >
+                  <Phone size={14} color={Colors.primary} />
+                </TouchableOpacity>
               </View>
             ))}
           </View>
@@ -298,13 +490,35 @@ export default function VerificationDetailScreen() {
                 {verification.report.summary}
               </Text>
 
+              <Text style={styles.reportGenerated}>
+                Report generated{" "}
+                {new Date(verification.report.generatedAt).toLocaleDateString(
+                  "en-NG",
+                  { day: "numeric", month: "long", year: "numeric" }
+                )}
+              </Text>
+
               <TouchableOpacity
                 style={styles.downloadButton}
                 activeOpacity={0.7}
+                onPress={handleDownloadReport}
               >
                 <Download size={16} color={Colors.white} />
                 <Text style={styles.downloadText}>Download PDF Report</Text>
               </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
+        {isCompleted && !verification.report && (
+          <View style={styles.pendingReport}>
+            <Clock size={20} color={Colors.info} />
+            <View style={styles.pendingReportContent}>
+              <Text style={styles.pendingReportTitle}>Report Being Generated</Text>
+              <Text style={styles.pendingReportText}>
+                Your verification is complete. The final report is being compiled
+                and will be available shortly.
+              </Text>
             </View>
           </View>
         )}
@@ -319,16 +533,20 @@ function DetailRow({
   label,
   value,
   isLast,
+  valueColor,
 }: {
   label: string;
   value: string;
   isLast?: boolean;
+  valueColor?: string;
 }) {
   return (
     <>
       <View style={styles.detailRow}>
         <Text style={styles.detailLabel}>{label}</Text>
-        <Text style={styles.detailValue}>{value}</Text>
+        <Text style={[styles.detailValue, valueColor ? { color: valueColor } : undefined]}>
+          {value}
+        </Text>
       </View>
       {!isLast && <View style={styles.detailDivider} />}
     </>
@@ -336,11 +554,17 @@ function DetailRow({
 }
 
 function ReportRow({ label, value }: { label: string; value: string }) {
-  const isGood =
-    value === "verified" || value === "clear";
+  const isGood = value === "verified" || value === "clear";
   const isBad =
-    value === "suspicious" || value === "disputed" || value === "acquired" || value === "mismatch";
-  const color = isGood ? Colors.success : isBad ? Colors.danger : Colors.warning;
+    value === "suspicious" ||
+    value === "disputed" ||
+    value === "acquired" ||
+    value === "mismatch";
+  const color = isGood
+    ? Colors.success
+    : isBad
+    ? Colors.danger
+    : Colors.warning;
 
   return (
     <View style={styles.reportRow}>
@@ -372,10 +596,18 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: Colors.background,
+    padding: 24,
   },
   notFoundText: {
-    fontSize: 16,
+    fontSize: 18,
+    fontWeight: "700" as const,
+    color: Colors.text,
+    marginBottom: 8,
+  },
+  notFoundSub: {
+    fontSize: 14,
     color: Colors.textSecondary,
+    textAlign: "center" as const,
   },
   headerCard: {
     backgroundColor: Colors.primary,
@@ -388,6 +620,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
+  },
+  headerTitleArea: {
+    flex: 1,
+    marginRight: 12,
   },
   plotNumber: {
     fontSize: 20,
@@ -404,19 +640,44 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.goldLight,
   },
-  riskSection: {
-    marginTop: 16,
+  headerActions: {
+    flexDirection: "row",
+    gap: 12,
+    marginTop: 14,
+  },
+  headerAction: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
+    gap: 6,
+    backgroundColor: "rgba(255,255,255,0.1)",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  headerActionText: {
+    fontSize: 12,
+    color: Colors.goldLight,
+    fontWeight: "500" as const,
+  },
+  riskSection: {
+    marginTop: 16,
+  },
+  riskLabelRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 6,
   },
   riskLabel: {
     fontSize: 12,
     color: "rgba(255,255,255,0.7)",
     fontWeight: "500" as const,
   },
+  riskBadge: {
+    fontSize: 12,
+    fontWeight: "700" as const,
+  },
   riskBarTrack: {
-    flex: 1,
     height: 6,
     backgroundColor: "rgba(255,255,255,0.2)",
     borderRadius: 3,
@@ -429,6 +690,36 @@ const styles = StyleSheet.create({
   riskValue: {
     fontSize: 13,
     fontWeight: "700" as const,
+    marginTop: 4,
+    textAlign: "right" as const,
+  },
+  timelineCard: {
+    marginHorizontal: 16,
+    marginTop: 12,
+    backgroundColor: Colors.card,
+    borderRadius: 14,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+  },
+  timelineRow: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+  },
+  timelineItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  timelineLabel: {
+    fontSize: 11,
+    color: Colors.textTertiary,
+    fontWeight: "500" as const,
+  },
+  timelineValue: {
+    fontSize: 14,
+    fontWeight: "700" as const,
+    color: Colors.text,
   },
   pipelineSection: {
     paddingHorizontal: 16,
@@ -489,7 +780,7 @@ const styles = StyleSheet.create({
   pipelineContent: {
     flex: 1,
     paddingLeft: 12,
-    paddingBottom: 12,
+    paddingBottom: 14,
     justifyContent: "center",
   },
   pipelineStepLabel: {
@@ -516,6 +807,24 @@ const styles = StyleSheet.create({
     color: Colors.primary,
     fontWeight: "600" as const,
   },
+  stepDesc: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    marginTop: 4,
+    lineHeight: 17,
+  },
+  stepEta: {
+    fontSize: 11,
+    color: Colors.textTertiary,
+    marginTop: 3,
+    fontStyle: "italic" as const,
+  },
+  stepCompleted: {
+    fontSize: 11,
+    color: Colors.success,
+    marginTop: 2,
+    fontWeight: "500" as const,
+  },
   flaggedCard: {
     flexDirection: "row",
     alignItems: "flex-start",
@@ -541,6 +850,21 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: Colors.textSecondary,
     lineHeight: 19,
+  },
+  flaggedActions: {
+    marginTop: 12,
+  },
+  flaggedAction: {
+    backgroundColor: Colors.danger + "15",
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 8,
+    alignSelf: "flex-start",
+  },
+  flaggedActionText: {
+    fontSize: 13,
+    fontWeight: "600" as const,
+    color: Colors.danger,
   },
   detailsSection: {
     paddingHorizontal: 16,
@@ -591,6 +915,14 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.borderLight,
   },
+  docIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: Colors.primary + "10",
+    justifyContent: "center",
+    alignItems: "center",
+  },
   docInfo: {
     flex: 1,
   },
@@ -601,6 +933,11 @@ const styles = StyleSheet.create({
   },
   docFile: {
     fontSize: 12,
+    color: Colors.textTertiary,
+    marginTop: 2,
+  },
+  docDate: {
+    fontSize: 11,
     color: Colors.textTertiary,
     marginTop: 2,
   },
@@ -620,12 +957,17 @@ const styles = StyleSheet.create({
     borderColor: Colors.borderLight,
   },
   proAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: Colors.primary + "12",
     justifyContent: "center",
     alignItems: "center",
+  },
+  proInitials: {
+    fontSize: 15,
+    fontWeight: "800" as const,
+    color: Colors.primary,
   },
   proInfo: {
     flex: 1,
@@ -637,8 +979,21 @@ const styles = StyleSheet.create({
   },
   proType: {
     fontSize: 12,
-    color: Colors.textTertiary,
+    color: Colors.textSecondary,
     marginTop: 2,
+  },
+  proLicense: {
+    fontSize: 11,
+    color: Colors.textTertiary,
+    marginTop: 1,
+  },
+  proContactBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: Colors.primary + "10",
+    justifyContent: "center",
+    alignItems: "center",
   },
   reportSection: {
     paddingHorizontal: 16,
@@ -688,7 +1043,13 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: Colors.textSecondary,
     lineHeight: 20,
+    marginBottom: 8,
+  },
+  reportGenerated: {
+    fontSize: 11,
+    color: Colors.textTertiary,
     marginBottom: 16,
+    fontStyle: "italic" as const,
   },
   downloadButton: {
     backgroundColor: Colors.primary,
@@ -703,6 +1064,32 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600" as const,
     color: Colors.white,
+  },
+  pendingReport: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 12,
+    marginHorizontal: 16,
+    marginTop: 24,
+    backgroundColor: Colors.info + "10",
+    borderRadius: 14,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: Colors.info + "25",
+  },
+  pendingReportContent: {
+    flex: 1,
+  },
+  pendingReportTitle: {
+    fontSize: 14,
+    fontWeight: "700" as const,
+    color: Colors.info,
+    marginBottom: 4,
+  },
+  pendingReportText: {
+    fontSize: 13,
+    color: Colors.textSecondary,
+    lineHeight: 19,
   },
   bottomSpacer: {
     height: 20,
