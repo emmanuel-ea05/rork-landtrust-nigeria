@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useEffect } from "react";
+import React, { useMemo, useRef, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -9,7 +9,7 @@ import {
   Alert,
   Share,
 } from "react-native";
-import { useLocalSearchParams, Stack } from "expo-router";
+import { useLocalSearchParams, Stack, useRouter } from "expo-router";
 import {
   MapPin,
   FileText,
@@ -22,9 +22,12 @@ import {
   Copy,
   Calendar,
   DollarSign,
+  ExternalLink,
+  Database,
+  ChevronRight,
 } from "lucide-react-native";
 import Colors from "@/constants/colors";
-import { MOCK_VERIFICATIONS, MOCK_PROFESSIONALS } from "@/mocks/data";
+import { MOCK_VERIFICATIONS, MOCK_PROFESSIONALS, MOCK_LAND_RECORDS } from "@/mocks/data";
 import {
   VerificationStatus,
   STATUS_LABELS,
@@ -61,6 +64,7 @@ const ESTIMATED_TIMES: Record<string, string> = {
 
 export default function VerificationDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const router = useRouter();
   const progressAnim = useRef(new Animated.Value(0)).current;
 
   const verification = useMemo(
@@ -91,16 +95,45 @@ export default function VerificationDetailScreen() {
     );
   }, [verification]);
 
+  const linkedLandRecord = useMemo(
+    () => MOCK_LAND_RECORDS.find((r) => r.verificationHistory.includes(verification?.id ?? "")),
+    [verification]
+  );
+
   const handleShare = async () => {
     if (!verification) return;
     try {
+      const statusLabel = STATUS_LABELS[verification.status];
+      const landId = linkedLandRecord?.landId ?? "N/A";
       await Share.share({
-        message: `LandSecure Verification ${verification.id}\nPlot: ${verification.plotNumber}\nDistrict: ${verification.district}, ${verification.state}\nStatus: ${STATUS_LABELS[verification.status]}`,
+        message: `LandSecure Verified Report\n\nCase: ${verification.id}\nLand ID: ${landId}\nPlot: ${verification.plotNumber}\nLocation: ${verification.district}, ${verification.state}\nStatus: ${statusLabel}\nSeller: ${verification.sellerName}\n${verification.riskScore !== undefined ? `Risk Score: ${verification.riskScore}/100\n` : ""}\nCheck this land's status: landsecure.ng/land/${landId}\n\nVerify Land Before You Buy — LandSecure Nigeria`,
+        title: `Land Verification: ${verification.plotNumber}`,
       });
+      console.log("[VerificationDetail] Full report shared");
     } catch (error) {
       console.log("[VerificationDetail] Share error:", error);
     }
   };
+
+  const handleSharePublicLink = async () => {
+    if (!verification) return;
+    const landId = linkedLandRecord?.landId ?? verification.id;
+    try {
+      await Share.share({
+        message: `Check this land's verified status on LandSecure:\n\nPlot: ${verification.plotNumber}\nDistrict: ${verification.district}\n\nView status: landsecure.ng/land/${landId}\n\nFree to check — LandSecure Nigeria`,
+        title: `View Land Status`,
+      });
+      console.log("[VerificationDetail] Public link shared");
+    } catch (error) {
+      console.log("[VerificationDetail] Share link error:", error);
+    }
+  };
+
+  const handleViewLandRecord = useCallback(() => {
+    if (linkedLandRecord) {
+      router.push({ pathname: "/land-record", params: { landId: linkedLandRecord.landId } });
+    }
+  }, [linkedLandRecord, router]);
 
   const handleCopyId = () => {
     if (!verification) return;
@@ -521,6 +554,50 @@ export default function VerificationDetailScreen() {
               </Text>
             </View>
           </View>
+        )}
+
+        <View style={styles.shareSection}>
+          <Text style={styles.sectionTitle}>Share This Verification</Text>
+          <Text style={styles.shareDesc}>
+            Help protect others. Share this land's verified status with buyers, family, or lawyers.
+          </Text>
+          <View style={styles.shareButtons}>
+            <TouchableOpacity
+              style={styles.sharePrimaryBtn}
+              onPress={handleShare}
+              activeOpacity={0.7}
+            >
+              <Share2 size={16} color={Colors.white} />
+              <Text style={styles.sharePrimaryText}>Share Full Report</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.shareSecondaryBtn}
+              onPress={handleSharePublicLink}
+              activeOpacity={0.7}
+            >
+              <ExternalLink size={14} color={Colors.primary} />
+              <Text style={styles.shareSecondaryText}>Public Link</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {linkedLandRecord && (
+          <TouchableOpacity
+            style={styles.landRecordLink}
+            onPress={handleViewLandRecord}
+            activeOpacity={0.7}
+          >
+            <View style={styles.landRecordLeft}>
+              <Database size={18} color={Colors.primary} />
+              <View>
+                <Text style={styles.landRecordLabel}>View Land Record</Text>
+                <Text style={styles.landRecordId}>
+                  {linkedLandRecord.landId} · {linkedLandRecord.timeline.length} events · {linkedLandRecord.totalVerifications} verifications
+                </Text>
+              </View>
+            </View>
+            <ChevronRight size={18} color={Colors.primary} />
+          </TouchableOpacity>
         )}
 
         <View style={styles.bottomSpacer} />
@@ -1090,6 +1167,81 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: Colors.textSecondary,
     lineHeight: 19,
+  },
+  shareSection: {
+    paddingHorizontal: 16,
+    marginTop: 24,
+  },
+  shareDesc: {
+    fontSize: 13,
+    color: Colors.textSecondary,
+    lineHeight: 19,
+    marginTop: -6,
+    marginBottom: 14,
+  },
+  shareButtons: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  sharePrimaryBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    backgroundColor: Colors.primary,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  sharePrimaryText: {
+    fontSize: 14,
+    fontWeight: "600" as const,
+    color: Colors.white,
+  },
+  shareSecondaryBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    backgroundColor: Colors.primary + "10",
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.primary + "25",
+  },
+  shareSecondaryText: {
+    fontSize: 14,
+    fontWeight: "600" as const,
+    color: Colors.primary,
+  },
+  landRecordLink: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginHorizontal: 16,
+    marginTop: 16,
+    backgroundColor: Colors.primary + "08",
+    borderRadius: 14,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: Colors.primary + "20",
+  },
+  landRecordLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    flex: 1,
+  },
+  landRecordLabel: {
+    fontSize: 14,
+    fontWeight: "700" as const,
+    color: Colors.primary,
+  },
+  landRecordId: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    marginTop: 2,
   },
   bottomSpacer: {
     height: 20,

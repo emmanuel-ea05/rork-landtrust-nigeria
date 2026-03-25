@@ -115,3 +115,53 @@ export const PROFESSIONAL_TYPE_LABELS: Record<ProfessionalType, string> = {
   lawyer: "Real Estate Lawyer",
   inspector: "Field Inspector",
 };
+
+export type LandStatus = "safe" | "disputed" | "government_acquisition" | "under_review" | "flagged";
+
+export const LAND_STATUS_LABELS: Record<LandStatus, string> = {
+  safe: "Safe",
+  disputed: "Disputed",
+  government_acquisition: "Gov. Acquisition",
+  under_review: "Under Review",
+  flagged: "Flagged",
+};
+
+export const LAND_STATUS_COLORS: Record<LandStatus, string> = {
+  safe: "#2ECC71",
+  disputed: "#F39C12",
+  government_acquisition: "#E74C3C",
+  under_review: "#3498DB",
+  flagged: "#E74C3C",
+};
+
+export interface OwnershipEvent {
+  id: string;
+  date: string;
+  type: "allocation" | "transfer" | "verification" | "dispute" | "acquisition" | "mortgage" | "court_ruling" | "status_change";
+  title: string;
+  description: string;
+  actor?: string;
+  documentRef?: string;
+}
+
+export interface LandRecord {
+  landId: string;
+  plotNumber: string;
+  district: string;
+  state: string;
+  coordinates?: {
+    latitude: number;
+    longitude: number;
+  };
+  surveyNumber?: string;
+  areaSize?: string;
+  currentOwner: string;
+  status: LandStatus;
+  riskScore: number;
+  timeline: OwnershipEvent[];
+  verificationHistory: string[];
+  lastVerified?: string;
+  totalVerifications: number;
+  createdAt: string;
+  updatedAt: string;
+}

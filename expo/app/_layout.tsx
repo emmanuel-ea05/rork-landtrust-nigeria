@@ -14,6 +14,7 @@ function RootLayoutNav() {
   return (
     <Stack screenOptions={{ headerBackTitle: "Back" }}>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen name="land-record" options={{ title: "Land Record", headerStyle: { backgroundColor: "#0A5C36" }, headerTintColor: "#FFFFFF", headerTitleStyle: { fontWeight: "700" as const } }} />
     </Stack>
   );
 }

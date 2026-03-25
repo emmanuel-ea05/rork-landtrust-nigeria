@@ -7,6 +7,8 @@ import {
   TouchableOpacity,
   Animated,
   RefreshControl,
+  TextInput,
+  Alert,
 } from "react-native";
 import { useRouter } from "expo-router";
 import {
@@ -14,7 +16,6 @@ import {
   MapPin,
   FileCheck,
   AlertTriangle,
-  TrendingUp,
   ChevronRight,
   Clock,
   Users,
@@ -22,9 +23,15 @@ import {
   Globe,
   BarChart3,
   ArrowUpRight,
+  Search,
+  Database,
+  Eye,
+  Share2,
+  Fingerprint,
 } from "lucide-react-native";
 import Colors from "@/constants/colors";
-import { MOCK_VERIFICATIONS, MOCK_PROFESSIONALS } from "@/mocks/data";
+import { MOCK_VERIFICATIONS, MOCK_PROFESSIONALS, MOCK_LAND_RECORDS } from "@/mocks/data";
+import { LAND_STATUS_LABELS, LAND_STATUS_COLORS } from "@/types";
 import StatusBadge from "@/components/StatusBadge";
 
 export default function HomeScreen() {
@@ -38,6 +45,8 @@ export default function HomeScreen() {
     new Animated.Value(0),
   ]).current;
   const [refreshing, setRefreshing] = useState(false);
+  const [lookupQuery, setLookupQuery] = useState("");
+  const lookupAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     Animated.parallel([
@@ -66,7 +75,6 @@ export default function HomeScreen() {
     });
   }, [fadeAnim, slideAnim, cardAnims]);
 
-  const totalVerifications = MOCK_VERIFICATIONS.length;
   const completedCount = MOCK_VERIFICATIONS.filter(
     (v) => v.status === "completed"
   ).length;
@@ -80,6 +88,8 @@ export default function HomeScreen() {
   const availablePros = MOCK_PROFESSIONALS.filter((p) => p.available).length;
 
   const recentVerifications = MOCK_VERIFICATIONS.slice(0, 3);
+  const trackedLands = MOCK_LAND_RECORDS.length;
+  const safeLands = MOCK_LAND_RECORDS.filter((r) => r.status === "safe").length;
 
   const handleNewVerification = useCallback(() => {
     router.push("/(tabs)/verify");
@@ -92,6 +102,50 @@ export default function HomeScreen() {
   const handleViewCase = useCallback(
     (id: string) => {
       router.push(`/(tabs)/activity/${id}`);
+    },
+    [router]
+  );
+
+  const handleLandLookup = useCallback(() => {
+    const query = lookupQuery.trim();
+    if (!query) {
+      Alert.alert("Enter Land ID", "Please enter a Land ID or plot number to look up.");
+      return;
+    }
+
+    console.log(`[HomeScreen] Looking up land: ${query}`);
+
+    const record = MOCK_LAND_RECORDS.find(
+      (r) =>
+        r.landId.toLowerCase() === query.toLowerCase() ||
+        r.plotNumber.toLowerCase() === query.toLowerCase()
+    );
+
+    if (record) {
+      router.push({ pathname: "/land-record", params: { landId: record.landId } });
+      setLookupQuery("");
+    } else {
+      Animated.sequence([
+        Animated.timing(lookupAnim, { toValue: 10, duration: 50, useNativeDriver: true }),
+        Animated.timing(lookupAnim, { toValue: -10, duration: 50, useNativeDriver: true }),
+        Animated.timing(lookupAnim, { toValue: 5, duration: 50, useNativeDriver: true }),
+        Animated.timing(lookupAnim, { toValue: 0, duration: 50, useNativeDriver: true }),
+      ]).start();
+
+      Alert.alert(
+        "Land Not Found",
+        `No record found for "${query}". This land may not have been verified yet.\n\nWould you like to request a verification?`,
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Verify Now", onPress: handleNewVerification },
+        ]
+      );
+    }
+  }, [lookupQuery, router, lookupAnim, handleNewVerification]);
+
+  const handleViewLandRecord = useCallback(
+    (landId: string) => {
+      router.push({ pathname: "/land-record", params: { landId } });
     },
     [router]
   );
@@ -169,12 +223,45 @@ export default function HomeScreen() {
         </View>
       </Animated.View>
 
+      <Animated.View style={[styles.lookupSection, { transform: [{ translateX: lookupAnim }] }]}>
+        <View style={styles.lookupHeader}>
+          <Fingerprint size={18} color={Colors.primary} />
+          <Text style={styles.lookupTitle}>Check Land Status</Text>
+          <View style={styles.freeBadge}>
+            <Text style={styles.freeText}>FREE</Text>
+          </View>
+        </View>
+        <Text style={styles.lookupDesc}>
+          Enter a Land ID or plot number to view its verified status instantly.
+        </Text>
+        <View style={styles.lookupInputRow}>
+          <TextInput
+            style={styles.lookupInput}
+            placeholder="e.g. LS-ABJ-00142 or PLT-4521-GZP"
+            placeholderTextColor={Colors.textTertiary}
+            value={lookupQuery}
+            onChangeText={setLookupQuery}
+            onSubmitEditing={handleLandLookup}
+            returnKeyType="search"
+            testID="land-lookup-input"
+          />
+          <TouchableOpacity
+            style={styles.lookupBtn}
+            onPress={handleLandLookup}
+            activeOpacity={0.7}
+            testID="land-lookup-btn"
+          >
+            <Search size={18} color={Colors.white} />
+          </TouchableOpacity>
+        </View>
+      </Animated.View>
+
       <View style={styles.statsGrid}>
         {[
           {
-            icon: <TrendingUp size={18} color={Colors.white} />,
-            value: totalVerifications,
-            label: "Total",
+            icon: <Database size={18} color={Colors.white} />,
+            value: trackedLands,
+            label: "Tracked",
             primary: true,
           },
           {
@@ -185,8 +272,8 @@ export default function HomeScreen() {
           },
           {
             icon: <FileCheck size={18} color={Colors.success} />,
-            value: completedCount,
-            label: "Done",
+            value: safeLands,
+            label: "Safe",
             primary: false,
           },
           {
@@ -245,6 +332,64 @@ export default function HomeScreen() {
             {availablePros} pros online
           </Text>
         </View>
+      </View>
+
+      <View style={styles.registrySection}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Land Registry</Text>
+          <TouchableOpacity onPress={handleViewAll} activeOpacity={0.7}>
+            <Text style={styles.viewAll}>View All</Text>
+          </TouchableOpacity>
+        </View>
+        <Text style={styles.registryDesc}>
+          Persistent land records with full ownership history and status tracking.
+        </Text>
+
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.registryScroll}
+        >
+          {MOCK_LAND_RECORDS.slice(0, 4).map((record) => {
+            const statusColor = LAND_STATUS_COLORS[record.status];
+            const riskColor = record.riskScore > 60 ? Colors.danger : record.riskScore > 30 ? Colors.warning : Colors.success;
+            return (
+              <TouchableOpacity
+                key={record.landId}
+                style={styles.registryCard}
+                onPress={() => handleViewLandRecord(record.landId)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.registryCardTop}>
+                  <View style={[styles.registryStatusDot, { backgroundColor: statusColor }]} />
+                  <Text style={styles.registryLandId}>{record.landId}</Text>
+                </View>
+                <Text style={styles.registryPlot}>{record.plotNumber}</Text>
+                <View style={styles.registryLocation}>
+                  <MapPin size={11} color={Colors.textTertiary} />
+                  <Text style={styles.registryDistrict}>{record.district}</Text>
+                </View>
+                <View style={styles.registryMeta}>
+                  <View style={[styles.registryStatusBadge, { backgroundColor: statusColor + "15" }]}>
+                    <Text style={[styles.registryStatusText, { color: statusColor }]}>
+                      {LAND_STATUS_LABELS[record.status]}
+                    </Text>
+                  </View>
+                  <View style={styles.registryRisk}>
+                    <View style={[styles.registryRiskDot, { backgroundColor: riskColor }]} />
+                    <Text style={styles.registryRiskText}>{record.riskScore}</Text>
+                  </View>
+                </View>
+                <View style={styles.registryFooter}>
+                  <Eye size={11} color={Colors.textTertiary} />
+                  <Text style={styles.registryFooterText}>
+                    {record.totalVerifications} checks · {record.timeline.length} events
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
       </View>
 
       <View style={styles.quickActions}>
@@ -391,6 +536,48 @@ export default function HomeScreen() {
         </ScrollView>
       </View>
 
+      <View style={styles.viralCard}>
+        <View style={styles.viralIconWrap}>
+          <Share2 size={22} color={Colors.primary} />
+        </View>
+        <View style={styles.viralContent}>
+          <Text style={styles.viralTitle}>Know someone buying land?</Text>
+          <Text style={styles.viralDesc}>
+            Share a land's verified status with them — it's free to check. Help protect others from fraud.
+          </Text>
+          <TouchableOpacity
+            style={styles.viralCta}
+            activeOpacity={0.7}
+            onPress={() => {
+              Alert.alert(
+                "Share LandSecure",
+                "Share the app with someone who's buying land in Abuja.",
+                [
+                  { text: "Cancel", style: "cancel" },
+                  {
+                    text: "Share App",
+                    onPress: async () => {
+                      try {
+                        await import("react-native").then(({ Share: S }) =>
+                          S.share({
+                            message: "Check if your land is safe before buying. Use LandSecure — Nigeria's trusted land verification platform.\n\nVerify Land Before You Buy.\nlandsecure.ng",
+                          })
+                        );
+                      } catch (e) {
+                        console.log("[HomeScreen] Share error:", e);
+                      }
+                    },
+                  },
+                ]
+              );
+            }}
+          >
+            <Text style={styles.viralCtaText}>Share with someone</Text>
+            <ChevronRight size={14} color={Colors.primary} />
+          </TouchableOpacity>
+        </View>
+      </View>
+
       <View style={styles.infoCard}>
         <View style={styles.infoIconWrap}>
           <Shield size={20} color={Colors.gold} />
@@ -534,11 +721,71 @@ const styles = StyleSheet.create({
     borderRadius: 3,
     backgroundColor: "rgba(197,165,90,0.2)",
   },
+  lookupSection: {
+    marginHorizontal: 16,
+    marginTop: 16,
+    backgroundColor: Colors.card,
+    borderRadius: 16,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+  },
+  lookupHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 6,
+  },
+  lookupTitle: {
+    fontSize: 16,
+    fontWeight: "700" as const,
+    color: Colors.text,
+    flex: 1,
+  },
+  freeBadge: {
+    backgroundColor: Colors.success + "18",
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 10,
+  },
+  freeText: {
+    fontSize: 10,
+    fontWeight: "800" as const,
+    color: Colors.success,
+    letterSpacing: 0.5,
+  },
+  lookupDesc: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    lineHeight: 17,
+    marginBottom: 12,
+  },
+  lookupInputRow: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  lookupInput: {
+    flex: 1,
+    backgroundColor: Colors.background,
+    borderRadius: 12,
+    padding: 12,
+    fontSize: 14,
+    color: Colors.text,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  lookupBtn: {
+    backgroundColor: Colors.primary,
+    borderRadius: 12,
+    width: 48,
+    justifyContent: "center",
+    alignItems: "center",
+  },
   statsGrid: {
     flexDirection: "row",
     paddingHorizontal: 16,
     gap: 10,
-    marginTop: 20,
+    marginTop: 16,
   },
   statCard: {
     flex: 1,
@@ -613,6 +860,101 @@ const styles = StyleSheet.create({
     color: Colors.textTertiary,
     fontWeight: "500" as const,
   },
+  registrySection: {
+    paddingHorizontal: 16,
+    marginTop: 24,
+  },
+  registryDesc: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    lineHeight: 17,
+    marginTop: -8,
+    marginBottom: 14,
+  },
+  registryScroll: {
+    gap: 10,
+    paddingRight: 4,
+  },
+  registryCard: {
+    width: 180,
+    backgroundColor: Colors.card,
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+  },
+  registryCardTop: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 6,
+  },
+  registryStatusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  registryLandId: {
+    fontSize: 11,
+    fontWeight: "700" as const,
+    color: Colors.primary,
+    letterSpacing: 0.3,
+  },
+  registryPlot: {
+    fontSize: 14,
+    fontWeight: "700" as const,
+    color: Colors.text,
+    marginBottom: 4,
+  },
+  registryLocation: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    marginBottom: 8,
+  },
+  registryDistrict: {
+    fontSize: 12,
+    color: Colors.textTertiary,
+  },
+  registryMeta: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 8,
+  },
+  registryStatusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  registryStatusText: {
+    fontSize: 10,
+    fontWeight: "700" as const,
+  },
+  registryRisk: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+  },
+  registryRiskDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  registryRiskText: {
+    fontSize: 10,
+    color: Colors.textTertiary,
+    fontWeight: "600" as const,
+  },
+  registryFooter: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  registryFooterText: {
+    fontSize: 10,
+    color: Colors.textTertiary,
+  },
   quickActions: {
     paddingHorizontal: 16,
     marginTop: 24,
@@ -622,6 +964,17 @@ const styles = StyleSheet.create({
     fontWeight: "700" as const,
     color: Colors.text,
     marginBottom: 14,
+  },
+  sectionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 14,
+  },
+  viewAll: {
+    fontSize: 13,
+    fontWeight: "600" as const,
+    color: Colors.primary,
   },
   actionGrid: {
     flexDirection: "row",
@@ -707,17 +1060,6 @@ const styles = StyleSheet.create({
   recentSection: {
     paddingHorizontal: 16,
     marginTop: 24,
-  },
-  sectionHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 14,
-  },
-  viewAll: {
-    fontSize: 13,
-    fontWeight: "600" as const,
-    color: Colors.primary,
   },
   emptyRecent: {
     alignItems: "center",
@@ -814,9 +1156,55 @@ const styles = StyleSheet.create({
     fontWeight: "600" as const,
     color: Colors.primary,
   },
-  infoCard: {
+  viralCard: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 14,
     marginHorizontal: 16,
     marginTop: 24,
+    backgroundColor: Colors.primary + "06",
+    borderRadius: 16,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: Colors.primary + "15",
+  },
+  viralIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: Colors.primary + "12",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  viralContent: {
+    flex: 1,
+  },
+  viralTitle: {
+    fontSize: 15,
+    fontWeight: "700" as const,
+    color: Colors.text,
+    marginBottom: 4,
+  },
+  viralDesc: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    lineHeight: 18,
+    marginBottom: 10,
+  },
+  viralCta: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    alignSelf: "flex-start",
+  },
+  viralCtaText: {
+    fontSize: 13,
+    fontWeight: "700" as const,
+    color: Colors.primary,
+  },
+  infoCard: {
+    marginHorizontal: 16,
+    marginTop: 20,
     backgroundColor: Colors.gold + "12",
     borderRadius: 14,
     padding: 16,
