@@ -28,6 +28,8 @@ import {
   Eye,
   Share2,
   Fingerprint,
+  Skull,
+  ScanLine,
 } from "lucide-react-native";
 import Colors from "@/constants/colors";
 import { MOCK_VERIFICATIONS, MOCK_PROFESSIONALS, MOCK_LAND_RECORDS } from "@/mocks/data";
@@ -93,6 +95,10 @@ export default function HomeScreen() {
 
   const handleNewVerification = useCallback(() => {
     router.push("/(tabs)/verify");
+  }, [router]);
+
+  const handleFraudScan = useCallback(() => {
+    router.push("/fraud-scan");
   }, [router]);
 
   const handleViewAll = useCallback(() => {
@@ -186,6 +192,32 @@ export default function HomeScreen() {
     >
       <Animated.View
         style={[
+          styles.fraudHero,
+          { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
+        ]}
+      >
+        <View style={styles.fraudHeroBadge}>
+          <Skull size={12} color={Colors.danger} />
+          <Text style={styles.fraudHeroBadgeText}>LAND FRAUD ALERT</Text>
+        </View>
+        <Text style={styles.fraudHeroTitle}>This land could{"\n"}be a scam.</Text>
+        <Text style={styles.fraudHeroSubtitle}>
+          ₦4.2 billion lost to land fraud in Abuja every year. Check before you lose millions.
+        </Text>
+        <TouchableOpacity
+          style={styles.fraudHeroCta}
+          onPress={handleFraudScan}
+          activeOpacity={0.8}
+          testID="home-fraud-scan"
+        >
+          <ScanLine size={18} color={Colors.white} />
+          <Text style={styles.fraudHeroCtaText}>Instant Fraud Risk Score — Free</Text>
+        </TouchableOpacity>
+        <Text style={styles.fraudHeroFootnote}>Takes 30 seconds · No payment required</Text>
+      </Animated.View>
+
+      <Animated.View
+        style={[
           styles.heroSection,
           { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
         ]}
@@ -232,7 +264,7 @@ export default function HomeScreen() {
           </View>
         </View>
         <Text style={styles.lookupDesc}>
-          Enter a Land ID or plot number to view its verified status instantly.
+          Already have a Land ID? Look up its verified status instantly.
         </Text>
         <View style={styles.lookupInputRow}>
           <TextInput
@@ -578,20 +610,26 @@ export default function HomeScreen() {
         </View>
       </View>
 
-      <View style={styles.infoCard}>
-        <View style={styles.infoIconWrap}>
-          <Shield size={20} color={Colors.gold} />
+      <TouchableOpacity
+        style={styles.fearCard}
+        onPress={handleFraudScan}
+        activeOpacity={0.8}
+      >
+        <View style={styles.fearIconWrap}>
+          <AlertTriangle size={22} color={Colors.danger} />
         </View>
-        <View style={styles.infoContent}>
-          <Text style={styles.infoTitle}>Protect Your Investment</Text>
-          <Text style={styles.infoText}>
-            Over 60% of land disputes in Nigeria arise from unverified
-            purchases. LandSecure checks C of O, survey plans, ownership
-            history, and government acquisition status — so you buy with
-            confidence.
+        <View style={styles.fearContent}>
+          <Text style={styles.fearTitle}>Don't become a victim</Text>
+          <Text style={styles.fearText}>
+            1 in 3 land titles in Nigeria have issues. Fake C of O, ghost sellers, government acquisition — scan any land for free before you pay a single naira.
           </Text>
+          <View style={styles.fearCta}>
+            <ScanLine size={14} color={Colors.danger} />
+            <Text style={styles.fearCtaText}>Scan Now — It's Free</Text>
+            <ChevronRight size={14} color={Colors.danger} />
+          </View>
         </View>
-      </View>
+      </TouchableOpacity>
 
       <View style={styles.bottomSpacer} />
     </ScrollView>
@@ -1238,5 +1276,110 @@ const styles = StyleSheet.create({
   },
   bottomSpacer: {
     height: 20,
+  },
+  fraudHero: {
+    backgroundColor: "#1A1A1A",
+    marginHorizontal: 16,
+    marginTop: 16,
+    borderRadius: 20,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: Colors.danger + "30",
+  },
+  fraudHeroBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: Colors.danger + "18",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 10,
+    alignSelf: "flex-start",
+    marginBottom: 14,
+  },
+  fraudHeroBadgeText: {
+    fontSize: 10,
+    fontWeight: "800" as const,
+    color: Colors.danger,
+    letterSpacing: 0.8,
+  },
+  fraudHeroTitle: {
+    fontSize: 28,
+    fontWeight: "900" as const,
+    color: Colors.white,
+    lineHeight: 34,
+    marginBottom: 8,
+  },
+  fraudHeroSubtitle: {
+    fontSize: 14,
+    color: "#999999",
+    lineHeight: 21,
+    marginBottom: 20,
+  },
+  fraudHeroCta: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: Colors.danger,
+    paddingVertical: 14,
+    borderRadius: 12,
+    marginBottom: 10,
+  },
+  fraudHeroCtaText: {
+    fontSize: 15,
+    fontWeight: "700" as const,
+    color: Colors.white,
+  },
+  fraudHeroFootnote: {
+    fontSize: 12,
+    color: "#666666",
+    textAlign: "center" as const,
+  },
+  fearCard: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 14,
+    marginHorizontal: 16,
+    marginTop: 20,
+    backgroundColor: Colors.danger + "08",
+    borderRadius: 16,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: Colors.danger + "20",
+  },
+  fearIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: Colors.danger + "15",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  fearContent: {
+    flex: 1,
+  },
+  fearTitle: {
+    fontSize: 16,
+    fontWeight: "700" as const,
+    color: Colors.danger,
+    marginBottom: 4,
+  },
+  fearText: {
+    fontSize: 13,
+    color: Colors.textSecondary,
+    lineHeight: 19,
+    marginBottom: 10,
+  },
+  fearCta: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    alignSelf: "flex-start",
+  },
+  fearCtaText: {
+    fontSize: 14,
+    fontWeight: "700" as const,
+    color: Colors.danger,
   },
 });
