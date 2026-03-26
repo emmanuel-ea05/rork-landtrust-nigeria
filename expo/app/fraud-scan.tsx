@@ -304,6 +304,7 @@ export default function FraudScanScreen() {
           headerStyle: { backgroundColor: "#1A1A1A" },
           headerTintColor: Colors.white,
           headerTitleStyle: { fontWeight: "700" as const },
+          headerBackTitle: "Back",
         }}
       />
       <KeyboardAvoidingView

@@ -17,7 +17,7 @@ export default function ActivityLayout() {
       />
       <Stack.Screen
         name="[id]"
-        options={{ title: "Verification Details" }}
+        options={{ title: "Verification Details", headerBackTitle: "Back" }}
       />
     </Stack>
   );

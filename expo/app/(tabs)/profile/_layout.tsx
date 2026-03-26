@@ -17,7 +17,7 @@ export default function ProfileLayout() {
       />
       <Stack.Screen
         name="professionals"
-        options={{ title: "Professionals" }}
+        options={{ title: "Professionals", headerBackTitle: "Back" }}
       />
     </Stack>
   );
