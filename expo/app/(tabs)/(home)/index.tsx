@@ -30,9 +30,11 @@ import {
   Fingerprint,
   Skull,
   ScanLine,
+  ShieldCheck,
+  Lock,
 } from "lucide-react-native";
 import Colors from "@/constants/colors";
-import { MOCK_VERIFICATIONS, MOCK_PROFESSIONALS, MOCK_LAND_RECORDS } from "@/mocks/data";
+import { MOCK_VERIFICATIONS, MOCK_PROFESSIONALS, MOCK_LAND_RECORDS, PLATFORM_STATS } from "@/mocks/data";
 import { LAND_STATUS_LABELS, LAND_STATUS_COLORS } from "@/types";
 import StatusBadge from "@/components/StatusBadge";
 
@@ -366,6 +368,46 @@ export default function HomeScreen() {
         </View>
       </View>
 
+      <View style={styles.shadowSection}>
+        <View style={styles.shadowHeader}>
+          <View style={styles.shadowBadge}>
+            <ShieldCheck size={12} color={Colors.white} />
+            <Text style={styles.shadowBadgeText}>SHADOW VERIFICATION NETWORK</Text>
+          </View>
+        </View>
+        <Text style={styles.shadowTitle}>We already verify{"\n"}{PLATFORM_STATS.totalPlotsVerified.toLocaleString()}+ plots monthly</Text>
+        <Text style={styles.shadowSubtitle}>
+          Independent verification using licensed surveyors, field inspectors, and real estate lawyers — no government access needed.
+        </Text>
+        <View style={styles.shadowStatsRow}>
+          <View style={styles.shadowStat}>
+            <Text style={styles.shadowStatNumber}>{PLATFORM_STATS.activeSurveyors}</Text>
+            <Text style={styles.shadowStatLabel}>Surveyors</Text>
+          </View>
+          <View style={styles.shadowStatDivider} />
+          <View style={styles.shadowStat}>
+            <Text style={styles.shadowStatNumber}>{PLATFORM_STATS.activeLawyers}</Text>
+            <Text style={styles.shadowStatLabel}>Lawyers</Text>
+          </View>
+          <View style={styles.shadowStatDivider} />
+          <View style={styles.shadowStat}>
+            <Text style={styles.shadowStatNumber}>{PLATFORM_STATS.activeInspectors}</Text>
+            <Text style={styles.shadowStatLabel}>Inspectors</Text>
+          </View>
+          <View style={styles.shadowStatDivider} />
+          <View style={styles.shadowStat}>
+            <Text style={styles.shadowStatNumber}>{PLATFORM_STATS.districtsWithData}</Text>
+            <Text style={styles.shadowStatLabel}>Districts</Text>
+          </View>
+        </View>
+        <View style={styles.shadowProofRow}>
+          <Lock size={12} color={Colors.goldDark} />
+          <Text style={styles.shadowProofText}>
+            {PLATFORM_STATS.disputesDetected} disputes detected · {PLATFORM_STATS.govAcquisitionsDetected} gov. acquisitions flagged
+          </Text>
+        </View>
+      </View>
+
       <View style={styles.registrySection}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Land Registry</Text>
@@ -607,6 +649,45 @@ export default function HomeScreen() {
             <Text style={styles.viralCtaText}>Share with someone</Text>
             <ChevronRight size={14} color={Colors.primary} />
           </TouchableOpacity>
+        </View>
+      </View>
+
+      <View style={styles.intelSection}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Land Intelligence</Text>
+          <View style={styles.intelBadge}>
+            <Database size={10} color={Colors.gold} />
+            <Text style={styles.intelBadgeText}>{PLATFORM_STATS.totalDataPoints.toLocaleString()} data points</Text>
+          </View>
+        </View>
+        <Text style={styles.intelDesc}>
+          Every verification feeds our intelligence database. We're building Nigeria's most comprehensive land data system.
+        </Text>
+
+        <View style={styles.intelGrid}>
+          <View style={styles.intelCard}>
+            <Text style={styles.intelCardNumber}>{PLATFORM_STATS.totalPlotsVerified.toLocaleString()}</Text>
+            <Text style={styles.intelCardLabel}>Plots Verified</Text>
+          </View>
+          <View style={styles.intelCard}>
+            <Text style={styles.intelCardNumber}>{PLATFORM_STATS.totalLandRecords}</Text>
+            <Text style={styles.intelCardLabel}>Land Records</Text>
+          </View>
+          <View style={styles.intelCard}>
+            <Text style={[styles.intelCardNumber, { color: Colors.danger }]}>{PLATFORM_STATS.govAcquisitionsDetected}</Text>
+            <Text style={styles.intelCardLabel}>Gov. Acquisitions</Text>
+          </View>
+          <View style={styles.intelCard}>
+            <Text style={[styles.intelCardNumber, { color: Colors.warning }]}>{PLATFORM_STATS.disputesDetected}</Text>
+            <Text style={styles.intelCardLabel}>Disputes Found</Text>
+          </View>
+        </View>
+
+        <View style={styles.intelInsight}>
+          <BarChart3 size={14} color={Colors.primary} />
+          <Text style={styles.intelInsightText}>
+            Only {PLATFORM_STATS.avgRiskScore}% average risk score across verified plots — but unverified land carries 3× higher risk.
+          </Text>
         </View>
       </View>
 
@@ -1381,5 +1462,153 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "700" as const,
     color: Colors.danger,
+  },
+  shadowSection: {
+    marginHorizontal: 16,
+    marginTop: 20,
+    backgroundColor: Colors.primaryDark,
+    borderRadius: 20,
+    padding: 22,
+    overflow: "hidden" as const,
+  },
+  shadowHeader: {
+    marginBottom: 14,
+  },
+  shadowBadge: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 6,
+    backgroundColor: "rgba(255,255,255,0.12)",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 10,
+    alignSelf: "flex-start" as const,
+  },
+  shadowBadgeText: {
+    fontSize: 10,
+    fontWeight: "800" as const,
+    color: Colors.gold,
+    letterSpacing: 0.8,
+  },
+  shadowTitle: {
+    fontSize: 22,
+    fontWeight: "900" as const,
+    color: Colors.white,
+    lineHeight: 28,
+    marginBottom: 8,
+  },
+  shadowSubtitle: {
+    fontSize: 13,
+    color: "rgba(255,255,255,0.55)",
+    lineHeight: 19,
+    marginBottom: 20,
+  },
+  shadowStatsRow: {
+    flexDirection: "row" as const,
+    backgroundColor: "rgba(255,255,255,0.08)",
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 12,
+  },
+  shadowStat: {
+    flex: 1,
+    alignItems: "center" as const,
+  },
+  shadowStatNumber: {
+    fontSize: 20,
+    fontWeight: "800" as const,
+    color: Colors.gold,
+    marginBottom: 2,
+  },
+  shadowStatLabel: {
+    fontSize: 10,
+    color: "rgba(255,255,255,0.5)",
+    fontWeight: "500" as const,
+  },
+  shadowStatDivider: {
+    width: 1,
+    backgroundColor: "rgba(255,255,255,0.1)",
+  },
+  shadowProofRow: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 6,
+    backgroundColor: "rgba(197,165,90,0.12)",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+  },
+  shadowProofText: {
+    fontSize: 12,
+    color: Colors.goldLight,
+    fontWeight: "500" as const,
+  },
+  intelSection: {
+    paddingHorizontal: 16,
+    marginTop: 24,
+  },
+  intelBadge: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 5,
+    backgroundColor: Colors.gold + "15",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 10,
+  },
+  intelBadgeText: {
+    fontSize: 10,
+    fontWeight: "700" as const,
+    color: Colors.goldDark,
+  },
+  intelDesc: {
+    fontSize: 13,
+    color: Colors.textSecondary,
+    lineHeight: 19,
+    marginTop: -8,
+    marginBottom: 14,
+  },
+  intelGrid: {
+    flexDirection: "row" as const,
+    flexWrap: "wrap" as const,
+    gap: 10,
+    marginBottom: 12,
+  },
+  intelCard: {
+    flex: 1,
+    minWidth: "45%" as unknown as number,
+    backgroundColor: Colors.card,
+    borderRadius: 14,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+    alignItems: "center" as const,
+  },
+  intelCardNumber: {
+    fontSize: 22,
+    fontWeight: "800" as const,
+    color: Colors.primary,
+    marginBottom: 2,
+  },
+  intelCardLabel: {
+    fontSize: 11,
+    color: Colors.textTertiary,
+    fontWeight: "500" as const,
+  },
+  intelInsight: {
+    flexDirection: "row" as const,
+    alignItems: "flex-start" as const,
+    gap: 8,
+    backgroundColor: Colors.primary + "08",
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.primary + "15",
+  },
+  intelInsightText: {
+    flex: 1,
+    fontSize: 12,
+    color: Colors.textSecondary,
+    lineHeight: 18,
   },
 });

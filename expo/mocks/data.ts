@@ -1,4 +1,4 @@
-import { VerificationRequest, Professional, District, LandRecord } from "@/types";
+import { VerificationRequest, Professional, District, LandRecord, PlatformStats } from "@/types";
 
 export const DISTRICTS: District[] = [
   { id: "1", name: "Guzape", state: "Abuja", coordinates: { latitude: 9.0234, longitude: 7.5186 } },
@@ -34,6 +34,20 @@ export const MOCK_VERIFICATIONS: VerificationRequest[] = [
     fee: 30000,
     paid: true,
     tier: "basic",
+    intelligence: {
+      titleType: "c_of_o",
+      landSize: "1,200",
+      landSizeUnit: "sqm",
+      estimatedPrice: 45000000,
+      ownershipChain: [
+        { name: "Chief Musa Danladi", acquiredDate: "2019-06-15", method: "AGIS Allocation" },
+        { name: "Adamu Ibrahim", acquiredDate: "2021-02-10", method: "Deed of Assignment" },
+      ],
+      yearOfAllocation: "2019",
+      developmentStatus: "undeveloped",
+      accessRoad: true,
+      fenced: false,
+    },
   },
   {
     id: "VR-002",
@@ -53,6 +67,21 @@ export const MOCK_VERIFICATIONS: VerificationRequest[] = [
     fee: 150000,
     paid: true,
     tier: "full_diligence",
+    intelligence: {
+      titleType: "c_of_o",
+      landSize: "2,400",
+      landSizeUnit: "sqm",
+      estimatedPrice: 350000000,
+      ownershipChain: [
+        { name: "Senator A.K. Bello", acquiredDate: "2016-03-22", method: "AGIS Allocation" },
+        { name: "Dr. Emmanuel Okafor", acquiredDate: "2018-11-14", method: "Purchase (Gov. Consent)" },
+        { name: "Chioma Okafor", acquiredDate: "2023-09-01", method: "Inheritance (Probate)" },
+      ],
+      yearOfAllocation: "2016",
+      developmentStatus: "developed",
+      accessRoad: true,
+      fenced: true,
+    },
     report: {
       id: "RPT-002",
       titleAuthenticity: "verified",
@@ -90,6 +119,20 @@ export const MOCK_VERIFICATIONS: VerificationRequest[] = [
     fee: 30000,
     paid: true,
     tier: "basic",
+    intelligence: {
+      titleType: "deed_of_assignment",
+      landSize: "650",
+      landSizeUnit: "sqm",
+      estimatedPrice: 12000000,
+      ownershipChain: [
+        { name: "Lugbe Community", acquiredDate: "2020-01-15", method: "Customary Sale" },
+        { name: "Emeka Nwankwo", acquiredDate: "2022-05-20", method: "Deed of Assignment" },
+      ],
+      yearOfAllocation: "2020",
+      developmentStatus: "undeveloped",
+      accessRoad: false,
+      fenced: false,
+    },
   },
   {
     id: "VR-004",
@@ -109,6 +152,20 @@ export const MOCK_VERIFICATIONS: VerificationRequest[] = [
     fee: 30000,
     paid: false,
     tier: "basic",
+    intelligence: {
+      titleType: "c_of_o",
+      landSize: "3,000",
+      landSizeUnit: "sqm",
+      estimatedPrice: 500000000,
+      ownershipChain: [
+        { name: "Alhaji Bello Mohammed", acquiredDate: "2015-09-10", method: "AGIS Allocation" },
+        { name: "Fatima Bello", acquiredDate: "2020-03-14", method: "Gift Deed (Gov. Consent)" },
+      ],
+      yearOfAllocation: "2015",
+      developmentStatus: "undeveloped",
+      accessRoad: true,
+      fenced: true,
+    },
   },
   {
     id: "VR-005",
@@ -127,6 +184,21 @@ export const MOCK_VERIFICATIONS: VerificationRequest[] = [
     fee: 200000,
     paid: true,
     tier: "priority",
+    intelligence: {
+      titleType: "allocation_letter",
+      landSize: "900",
+      landSizeUnit: "sqm",
+      estimatedPrice: 25000000,
+      ownershipChain: [
+        { name: "Alhaji Garba Suleiman", acquiredDate: "2017-04-10", method: "FCDA Allocation" },
+        { name: "Oluwaseun Adekunle", acquiredDate: "2019-08-22", method: "Private Sale (No Gov. Consent)" },
+      ],
+      knownDisputes: "Active court case FCT/HC/2021/0892 — third party claim. 30% under FCDA road expansion.",
+      yearOfAllocation: "2017",
+      developmentStatus: "undeveloped",
+      accessRoad: true,
+      fenced: false,
+    },
     report: {
       id: "RPT-005",
       titleAuthenticity: "suspicious",
@@ -294,6 +366,58 @@ export const MOCK_LAND_RECORDS: LandRecord[] = [
     updatedAt: "2026-02-28T00:00:00Z",
   },
 ];
+
+export const PLATFORM_STATS: PlatformStats = {
+  totalPlotsVerified: 1247,
+  totalLandRecords: 892,
+  activeSurveyors: 47,
+  activeLawyers: 23,
+  activeInspectors: 31,
+  districtsWithData: 12,
+  totalDataPoints: 18640,
+  monthlyVerifications: 342,
+  disputesDetected: 89,
+  govAcquisitionsDetected: 156,
+  avgRiskScore: 34,
+  totalInvestmentProtected: 4200000000,
+};
+
+export const INTELLIGENCE_SUMMARY = {
+  topTitleTypes: [
+    { type: "c_of_o" as const, count: 412, percentage: 33 },
+    { type: "deed_of_assignment" as const, count: 356, percentage: 29 },
+    { type: "allocation_letter" as const, count: 234, percentage: 19 },
+    { type: "customary_right" as const, count: 145, percentage: 12 },
+    { type: "unknown" as const, count: 100, percentage: 7 },
+  ],
+  riskByDistrict: [
+    { district: "Maitama", avgRisk: 18, count: 156 },
+    { district: "Asokoro", avgRisk: 22, count: 134 },
+    { district: "Guzape", avgRisk: 28, count: 112 },
+    { district: "Gwarinpa", avgRisk: 35, count: 98 },
+    { district: "Jabi", avgRisk: 31, count: 87 },
+    { district: "Lugbe", avgRisk: 42, count: 145 },
+    { district: "Wuse", avgRisk: 25, count: 76 },
+    { district: "Kubwa", avgRisk: 48, count: 62 },
+    { district: "Life Camp", avgRisk: 33, count: 54 },
+    { district: "Karu", avgRisk: 52, count: 68 },
+    { district: "Orozo", avgRisk: 55, count: 43 },
+    { district: "Idu", avgRisk: 39, count: 38 },
+  ],
+  priceRanges: [
+    { range: "Under ₦10M", count: 234 },
+    { range: "₦10M – ₦50M", count: 412 },
+    { range: "₦50M – ₦200M", count: 287 },
+    { range: "₦200M – ₦500M", count: 156 },
+    { range: "Over ₦500M", count: 58 },
+  ],
+  ownershipChainStats: {
+    avgTransfers: 2.3,
+    maxTransfers: 7,
+    percentWithGovConsent: 61,
+    percentWithDisputes: 18,
+  },
+};
 
 export const MOCK_PROFESSIONALS: Professional[] = [
   {

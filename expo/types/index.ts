@@ -16,6 +16,25 @@ export type DocumentType =
   | "allocation_letter"
   | "other";
 
+export type TitleType =
+  | "c_of_o"
+  | "r_of_o"
+  | "customary_right"
+  | "governor_consent"
+  | "allocation_letter"
+  | "deed_of_assignment"
+  | "unknown";
+
+export const TITLE_TYPE_LABELS: Record<TitleType, string> = {
+  c_of_o: "Certificate of Occupancy (C of O)",
+  r_of_o: "Right of Occupancy (R of O)",
+  customary_right: "Customary Right of Occupancy",
+  governor_consent: "Governor's Consent",
+  allocation_letter: "Allocation Letter",
+  deed_of_assignment: "Deed of Assignment",
+  unknown: "Unknown / Not Provided",
+};
+
 export type ProfessionalType = "surveyor" | "lawyer" | "inspector";
 
 export interface User {
@@ -62,6 +81,32 @@ export const TIER_TURNAROUND: Record<VerificationTier, string> = {
   priority: "24 hours",
 };
 
+export interface OwnershipChainEntry {
+  name: string;
+  acquiredDate?: string;
+  method?: string;
+}
+
+export interface IntelligenceData {
+  titleType: TitleType;
+  landSize?: string;
+  landSizeUnit?: "sqm" | "hectares" | "plots" | "acres";
+  estimatedPrice?: number;
+  ownershipChain: OwnershipChainEntry[];
+  knownDisputes?: string;
+  yearOfAllocation?: string;
+  developmentStatus?: "undeveloped" | "under_construction" | "developed" | "unknown";
+  accessRoad?: boolean;
+  fenced?: boolean;
+}
+
+export const DEVELOPMENT_STATUS_LABELS: Record<string, string> = {
+  undeveloped: "Undeveloped / Bare Land",
+  under_construction: "Under Construction",
+  developed: "Developed / Built",
+  unknown: "Unknown",
+};
+
 export interface VerificationRequest {
   id: string;
   plotNumber: string;
@@ -83,6 +128,7 @@ export interface VerificationRequest {
   fee: number;
   paid: boolean;
   tier: VerificationTier;
+  intelligence?: IntelligenceData;
 }
 
 export interface TrustSignal {
@@ -203,4 +249,20 @@ export interface LandRecord {
   totalVerifications: number;
   createdAt: string;
   updatedAt: string;
+  intelligence?: IntelligenceData;
+}
+
+export interface PlatformStats {
+  totalPlotsVerified: number;
+  totalLandRecords: number;
+  activeSurveyors: number;
+  activeLawyers: number;
+  activeInspectors: number;
+  districtsWithData: number;
+  totalDataPoints: number;
+  monthlyVerifications: number;
+  disputesDetected: number;
+  govAcquisitionsDetected: number;
+  avgRiskScore: number;
+  totalInvestmentProtected: number;
 }

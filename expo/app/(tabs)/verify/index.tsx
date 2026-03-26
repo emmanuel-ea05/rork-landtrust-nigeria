@@ -24,6 +24,12 @@ import {
   Info,
   Lock,
   Zap,
+  Database,
+  Plus,
+  Trash2,
+  Ruler,
+  Landmark,
+  Home,
 } from "lucide-react-native";
 import Colors from "@/constants/colors";
 import { DISTRICTS } from "@/mocks/data";
@@ -35,9 +41,20 @@ import {
   TIER_PRICES,
   TIER_DESCRIPTIONS,
   TIER_TURNAROUND,
+  TitleType,
+  TITLE_TYPE_LABELS,
+  OwnershipChainEntry,
+  DEVELOPMENT_STATUS_LABELS,
 } from "@/types";
 
-type Step = 1 | 2 | 3 | 4;
+type Step = 1 | 2 | 3 | 4 | 5;
+
+const TITLE_TYPES: TitleType[] = [
+  "c_of_o", "r_of_o", "customary_right", "governor_consent",
+  "allocation_letter", "deed_of_assignment", "unknown",
+];
+
+const DEV_STATUSES = ["undeveloped", "under_construction", "developed", "unknown"] as const;
 
 const DOCUMENT_TYPES: DocumentType[] = [
   "c_of_o",
@@ -55,7 +72,7 @@ const DOC_DESCRIPTIONS: Record<DocumentType, string> = {
   other: "Any other supporting document",
 };
 
-const STEP_ICONS = [MapPin, User, FileText, Shield] as const;
+const STEP_ICONS = [MapPin, User, Database, FileText, Shield] as const;
 
 export default function VerifyScreen() {
   const [currentStep, setCurrentStep] = useState<Step>(1);
@@ -70,12 +87,23 @@ export default function VerifyScreen() {
   const [showDistrictPicker, setShowDistrictPicker] = useState(false);
   const [additionalNotes, setAdditionalNotes] = useState("");
   const [selectedTier, setSelectedTier] = useState<VerificationTier>("basic");
-  const progressAnim = useRef(new Animated.Value(0.25)).current;
+  const [titleType, setTitleType] = useState<TitleType>("unknown");
+  const [showTitleTypePicker, setShowTitleTypePicker] = useState(false);
+  const [landSize, setLandSize] = useState("");
+  const [landSizeUnit, setLandSizeUnit] = useState<"sqm" | "hectares" | "plots" | "acres">("sqm");
+  const [estimatedPrice, setEstimatedPrice] = useState("");
+  const [ownershipChain, setOwnershipChain] = useState<OwnershipChainEntry[]>([{ name: "", acquiredDate: "", method: "" }]);
+  const [knownDisputes, setKnownDisputes] = useState("");
+  const [yearOfAllocation, setYearOfAllocation] = useState("");
+  const [developmentStatus, setDevelopmentStatus] = useState<string>("unknown");
+  const [accessRoad, setAccessRoad] = useState(false);
+  const [fenced, setFenced] = useState(false);
+  const progressAnim = useRef(new Animated.Value(0.2)).current;
 
   const animateProgress = useCallback(
     (step: Step) => {
       Animated.spring(progressAnim, {
-        toValue: step / 4,
+        toValue: step / 5,
         useNativeDriver: false,
         tension: 40,
         friction: 10,
@@ -101,6 +129,20 @@ export default function VerifyScreen() {
     );
   }, []);
 
+  const addOwnershipEntry = useCallback(() => {
+    setOwnershipChain((prev) => [...prev, { name: "", acquiredDate: "", method: "" }]);
+  }, []);
+
+  const removeOwnershipEntry = useCallback((index: number) => {
+    setOwnershipChain((prev) => prev.filter((_, i) => i !== index));
+  }, []);
+
+  const updateOwnershipEntry = useCallback((index: number, field: keyof OwnershipChainEntry, value: string) => {
+    setOwnershipChain((prev) =>
+      prev.map((entry, i) => (i === index ? { ...entry, [field]: value } : entry))
+    );
+  }, []);
+
   const canProceed = useCallback(() => {
     switch (currentStep) {
       case 1:
@@ -108,8 +150,10 @@ export default function VerifyScreen() {
       case 2:
         return sellerName.trim() !== "";
       case 3:
-        return selectedDocs.length > 0;
+        return true;
       case 4:
+        return selectedDocs.length > 0;
+      case 5:
         return true;
       default:
         return false;
@@ -117,7 +161,7 @@ export default function VerifyScreen() {
   }, [currentStep, plotNumber, selectedDistrict, sellerName, selectedDocs]);
 
   const handleNext = useCallback(() => {
-    if (currentStep < 4) {
+    if (currentStep < 5) {
       goToStep((currentStep + 1) as Step);
     }
   }, [currentStep, goToStep]);
@@ -132,54 +176,28 @@ export default function VerifyScreen() {
 
   const handleSubmit = useCallback(() => {
     console.log("[VerifyScreen] Submitting verification request", {
-      plotNumber,
-      selectedDistrict,
-      sellerName,
-      selectedDocs,
-      selectedTier,
+      plotNumber, selectedDistrict, sellerName, selectedDocs, selectedTier,
+      intelligence: { titleType, landSize, landSizeUnit, estimatedPrice, ownershipChain: ownershipChain.filter((e) => e.name.trim()), knownDisputes, yearOfAllocation, developmentStatus, accessRoad, fenced },
     });
+    const resetForm = () => {
+      setCurrentStep(1); animateProgress(1);
+      setPlotNumber(""); setSelectedDistrict(""); setSurveyNumber("");
+      setSellerName(""); setSellerPhone(""); setLatitude(""); setLongitude("");
+      setSelectedDocs([]); setAdditionalNotes(""); setSelectedTier("basic");
+      setTitleType("unknown"); setLandSize(""); setEstimatedPrice("");
+      setOwnershipChain([{ name: "", acquiredDate: "", method: "" }]);
+      setKnownDisputes(""); setYearOfAllocation(""); setDevelopmentStatus("unknown");
+      setAccessRoad(false); setFenced(false);
+    };
     Alert.alert(
       "Verification Submitted",
-      `Your verification request for ${plotNumber} in ${selectedDistrict} has been submitted successfully.\n\nCase ID: VR-${Date.now().toString().slice(-6)}\nPlan: ${TIER_LABELS[selectedTier]}\nFee: ₦${verificationFee.toLocaleString()}\nTurnaround: ${TIER_TURNAROUND[selectedTier]}\n\nYou will be notified once a professional is assigned to your case.`,
+      `Your verification request for ${plotNumber} in ${selectedDistrict} has been submitted successfully.\n\nCase ID: VR-${Date.now().toString().slice(-6)}\nPlan: ${TIER_LABELS[selectedTier]}\nFee: ₦${verificationFee.toLocaleString()}\nTurnaround: ${TIER_TURNAROUND[selectedTier]}\n\nYour data has been added to our Land Intelligence Database.`,
       [
-        {
-          text: "View Activity",
-          onPress: () => {
-            console.log("[VerifyScreen] Navigating to activity");
-            setCurrentStep(1);
-            animateProgress(1);
-            setPlotNumber("");
-            setSelectedDistrict("");
-            setSurveyNumber("");
-            setSellerName("");
-            setSellerPhone("");
-            setLatitude("");
-            setLongitude("");
-            setSelectedDocs([]);
-            setAdditionalNotes("");
-            setSelectedTier("basic");
-          },
-        },
-        {
-          text: "OK",
-          onPress: () => {
-            setCurrentStep(1);
-            animateProgress(1);
-            setPlotNumber("");
-            setSelectedDistrict("");
-            setSurveyNumber("");
-            setSellerName("");
-            setSellerPhone("");
-            setLatitude("");
-            setLongitude("");
-            setSelectedDocs([]);
-            setAdditionalNotes("");
-            setSelectedTier("basic");
-          },
-        },
+        { text: "View Activity", onPress: resetForm },
+        { text: "OK", onPress: resetForm },
       ]
     );
-  }, [plotNumber, selectedDistrict, sellerName, selectedDocs, selectedTier, animateProgress, verificationFee]);
+  }, [plotNumber, selectedDistrict, sellerName, selectedDocs, selectedTier, animateProgress, verificationFee, titleType, landSize, landSizeUnit, estimatedPrice, ownershipChain, knownDisputes, yearOfAllocation, developmentStatus, accessRoad, fenced]);
 
   const selectedDistrictData = DISTRICTS.find((d) => d.name === selectedDistrict);
 
@@ -199,7 +217,7 @@ export default function VerifyScreen() {
         />
       </View>
       <View style={styles.stepLabels}>
-        {["Location", "Seller", "Documents", "Review"].map((label, i) => {
+        {["Location", "Seller", "Intel", "Docs", "Review"].map((label, i) => {
           const IconComp = STEP_ICONS[i];
           return (
             <View key={label} style={styles.stepLabelWrap}>
@@ -441,6 +459,222 @@ export default function VerifyScreen() {
     <View style={styles.stepContent}>
       <View style={styles.stepHeaderRow}>
         <View style={styles.stepIconCircle}>
+          <Database size={20} color={Colors.primary} />
+        </View>
+        <View>
+          <Text style={styles.stepTitle}>Land Intelligence</Text>
+          <Text style={styles.stepDescription}>
+            Help us build Nigeria's land database.
+          </Text>
+        </View>
+      </View>
+
+      <View style={styles.intelBanner}>
+        <Database size={14} color={Colors.gold} />
+        <Text style={styles.intelBannerText}>
+          This data feeds our Land Intelligence Database — making every future buyer safer.
+        </Text>
+      </View>
+
+      <View style={styles.inputGroup}>
+        <Text style={styles.inputLabel}>Title Document Type</Text>
+        <TouchableOpacity
+          style={styles.selectInput}
+          onPress={() => setShowTitleTypePicker(!showTitleTypePicker)}
+          activeOpacity={0.7}
+        >
+          <Text style={[styles.selectText, titleType === "unknown" && styles.selectPlaceholder]}>
+            {TITLE_TYPE_LABELS[titleType]}
+          </Text>
+          <ChevronDown size={18} color={Colors.textTertiary} />
+        </TouchableOpacity>
+        {showTitleTypePicker && (
+          <View style={styles.pickerDropdown}>
+            <ScrollView style={styles.pickerScroll} nestedScrollEnabled>
+              {TITLE_TYPES.map((tt) => (
+                <TouchableOpacity
+                  key={tt}
+                  style={[styles.pickerItem, titleType === tt && styles.pickerItemActive]}
+                  onPress={() => { setTitleType(tt); setShowTitleTypePicker(false); }}
+                >
+                  <Text style={[styles.pickerItemText, titleType === tt && styles.pickerItemTextActive]}>
+                    {TITLE_TYPE_LABELS[tt]}
+                  </Text>
+                  {titleType === tt && <CheckCircle size={16} color={Colors.primary} />}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+      </View>
+
+      <View style={styles.coordinateRow}>
+        <View style={[styles.inputGroup, { flex: 2 }]}>
+          <Text style={styles.inputLabel}>Land Size</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="e.g. 1200"
+            placeholderTextColor={Colors.textTertiary}
+            value={landSize}
+            onChangeText={setLandSize}
+            keyboardType="numeric"
+          />
+        </View>
+        <View style={[styles.inputGroup, { flex: 1 }]}>
+          <Text style={styles.inputLabel}>Unit</Text>
+          <View style={styles.unitRow}>
+            {(["sqm", "hectares", "plots", "acres"] as const).map((u) => (
+              <TouchableOpacity
+                key={u}
+                style={[styles.unitChip, landSizeUnit === u && styles.unitChipActive]}
+                onPress={() => setLandSizeUnit(u)}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.unitChipText, landSizeUnit === u && styles.unitChipTextActive]}>{u}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+      </View>
+
+      <View style={styles.inputGroup}>
+        <Text style={styles.inputLabel}>Estimated Price (₦)</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="e.g. 45000000"
+          placeholderTextColor={Colors.textTertiary}
+          value={estimatedPrice}
+          onChangeText={setEstimatedPrice}
+          keyboardType="numeric"
+        />
+        <Text style={styles.inputHint}>Asking price or last known transaction price</Text>
+      </View>
+
+      <View style={styles.inputGroup}>
+        <Text style={styles.inputLabel}>Year of Original Allocation</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="e.g. 2019"
+          placeholderTextColor={Colors.textTertiary}
+          value={yearOfAllocation}
+          onChangeText={setYearOfAllocation}
+          keyboardType="numeric"
+          maxLength={4}
+        />
+      </View>
+
+      <View style={styles.inputGroup}>
+        <Text style={styles.inputLabel}>Development Status</Text>
+        <View style={styles.devStatusRow}>
+          {DEV_STATUSES.map((ds) => (
+            <TouchableOpacity
+              key={ds}
+              style={[styles.devStatusChip, developmentStatus === ds && styles.devStatusChipActive]}
+              onPress={() => setDevelopmentStatus(ds)}
+              activeOpacity={0.7}
+            >
+              {ds === "undeveloped" && <Ruler size={12} color={developmentStatus === ds ? Colors.white : Colors.textSecondary} />}
+              {ds === "under_construction" && <Landmark size={12} color={developmentStatus === ds ? Colors.white : Colors.textSecondary} />}
+              {ds === "developed" && <Home size={12} color={developmentStatus === ds ? Colors.white : Colors.textSecondary} />}
+              {ds === "unknown" && <AlertCircle size={12} color={developmentStatus === ds ? Colors.white : Colors.textSecondary} />}
+              <Text style={[styles.devStatusText, developmentStatus === ds && styles.devStatusTextActive]}>
+                {DEVELOPMENT_STATUS_LABELS[ds]}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+
+      <View style={styles.toggleRow}>
+        <TouchableOpacity
+          style={[styles.toggleCard, accessRoad && styles.toggleCardActive]}
+          onPress={() => setAccessRoad(!accessRoad)}
+          activeOpacity={0.7}
+        >
+          <View style={[styles.toggleCheck, accessRoad && styles.toggleCheckActive]}>
+            {accessRoad && <CheckCircle size={14} color={Colors.white} />}
+          </View>
+          <Text style={[styles.toggleLabel, accessRoad && styles.toggleLabelActive]}>Access Road</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.toggleCard, fenced && styles.toggleCardActive]}
+          onPress={() => setFenced(!fenced)}
+          activeOpacity={0.7}
+        >
+          <View style={[styles.toggleCheck, fenced && styles.toggleCheckActive]}>
+            {fenced && <CheckCircle size={14} color={Colors.white} />}
+          </View>
+          <Text style={[styles.toggleLabel, fenced && styles.toggleLabelActive]}>Fenced</Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.inputGroup}>
+        <View style={styles.chainHeader}>
+          <Text style={styles.inputLabel}>Ownership Chain (if known)</Text>
+          <TouchableOpacity onPress={addOwnershipEntry} activeOpacity={0.7} style={styles.addChainBtn}>
+            <Plus size={14} color={Colors.primary} />
+            <Text style={styles.addChainText}>Add</Text>
+          </TouchableOpacity>
+        </View>
+        {ownershipChain.map((entry, idx) => (
+          <View key={idx} style={styles.chainEntry}>
+            <View style={styles.chainEntryHeader}>
+              <Text style={styles.chainEntryLabel}>Owner #{idx + 1}</Text>
+              {ownershipChain.length > 1 && (
+                <TouchableOpacity onPress={() => removeOwnershipEntry(idx)} activeOpacity={0.7}>
+                  <Trash2 size={14} color={Colors.danger} />
+                </TouchableOpacity>
+              )}
+            </View>
+            <TextInput
+              style={styles.chainInput}
+              placeholder="Full name"
+              placeholderTextColor={Colors.textTertiary}
+              value={entry.name}
+              onChangeText={(v) => updateOwnershipEntry(idx, "name", v)}
+            />
+            <View style={styles.coordinateRow}>
+              <TextInput
+                style={[styles.chainInput, { flex: 1 }]}
+                placeholder="Year acquired"
+                placeholderTextColor={Colors.textTertiary}
+                value={entry.acquiredDate ?? ""}
+                onChangeText={(v) => updateOwnershipEntry(idx, "acquiredDate", v)}
+                keyboardType="numeric"
+                maxLength={4}
+              />
+              <TextInput
+                style={[styles.chainInput, { flex: 2 }]}
+                placeholder="How (e.g. Purchase, Gift)"
+                placeholderTextColor={Colors.textTertiary}
+                value={entry.method ?? ""}
+                onChangeText={(v) => updateOwnershipEntry(idx, "method", v)}
+              />
+            </View>
+          </View>
+        ))}
+      </View>
+
+      <View style={styles.inputGroup}>
+        <Text style={styles.inputLabel}>Known Disputes or Issues</Text>
+        <TextInput
+          style={[styles.input, styles.textArea]}
+          placeholder="Any known court cases, boundary issues, or government acquisition notices..."
+          placeholderTextColor={Colors.textTertiary}
+          value={knownDisputes}
+          onChangeText={setKnownDisputes}
+          multiline
+          numberOfLines={3}
+          textAlignVertical="top"
+        />
+      </View>
+    </View>
+  );
+
+  const renderStep4 = () => (
+    <View style={styles.stepContent}>
+      <View style={styles.stepHeaderRow}>
+        <View style={styles.stepIconCircle}>
           <FileText size={20} color={Colors.primary} />
         </View>
         <View>
@@ -504,7 +738,7 @@ export default function VerifyScreen() {
     </View>
   );
 
-  const renderStep4 = () => (
+  const renderStep5 = () => (
     <View style={styles.stepContent}>
       <View style={styles.stepHeaderRow}>
         <View style={styles.stepIconCircle}>
@@ -570,6 +804,30 @@ export default function VerifyScreen() {
           </Text>
         </View>
       </View>
+
+      {(titleType !== "unknown" || landSize || estimatedPrice) && (
+        <View style={[styles.reviewCard, { marginTop: 14 }]}>
+          <View style={styles.intelReviewHeader}>
+            <Database size={14} color={Colors.primary} />
+            <Text style={styles.intelReviewTitle}>Intelligence Data Captured</Text>
+          </View>
+          {titleType !== "unknown" && (
+            <><View style={styles.reviewRow}><Text style={styles.reviewLabel}>Title Type</Text><Text style={styles.reviewValue}>{TITLE_TYPE_LABELS[titleType]}</Text></View><View style={styles.reviewDivider} /></>
+          )}
+          {landSize ? (
+            <><View style={styles.reviewRow}><Text style={styles.reviewLabel}>Land Size</Text><Text style={styles.reviewValue}>{landSize} {landSizeUnit}</Text></View><View style={styles.reviewDivider} /></>
+          ) : null}
+          {estimatedPrice ? (
+            <><View style={styles.reviewRow}><Text style={styles.reviewLabel}>Est. Price</Text><Text style={styles.reviewValue}>₦{Number(estimatedPrice).toLocaleString()}</Text></View><View style={styles.reviewDivider} /></>
+          ) : null}
+          {developmentStatus !== "unknown" && (
+            <><View style={styles.reviewRow}><Text style={styles.reviewLabel}>Dev. Status</Text><Text style={styles.reviewValue}>{DEVELOPMENT_STATUS_LABELS[developmentStatus]}</Text></View><View style={styles.reviewDivider} /></>
+          )}
+          {ownershipChain.filter((e) => e.name.trim()).length > 0 && (
+            <View style={styles.reviewRow}><Text style={styles.reviewLabel}>Owners</Text><Text style={styles.reviewValue}>{ownershipChain.filter((e) => e.name.trim()).map((e) => e.name).join(" → ")}</Text></View>
+          )}
+        </View>
+      )}
 
       <Text style={styles.tierSectionTitle}>Select Verification Plan</Text>
       {(["basic", "full_diligence", "priority"] as VerificationTier[]).map((tier) => {
@@ -709,6 +967,7 @@ export default function VerifyScreen() {
         {currentStep === 2 && renderStep2()}
         {currentStep === 3 && renderStep3()}
         {currentStep === 4 && renderStep4()}
+        {currentStep === 5 && renderStep5()}
       </ScrollView>
 
       <View style={styles.bottomBar}>
@@ -727,13 +986,13 @@ export default function VerifyScreen() {
             !canProceed() && styles.nextButtonDisabled,
             currentStep === 1 && styles.nextButtonFull,
           ]}
-          onPress={currentStep === 4 ? handleSubmit : handleNext}
+          onPress={currentStep === 5 ? handleSubmit : handleNext}
           disabled={!canProceed()}
           activeOpacity={0.7}
           testID="verify-next-button"
         >
           <Text style={styles.nextButtonText}>
-            {currentStep === 4
+            {currentStep === 5
               ? `Submit & Pay ₦${verificationFee.toLocaleString()}`
               : "Continue"}
           </Text>
@@ -1316,5 +1575,174 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "700" as const,
     color: Colors.white,
+  },
+  intelBanner: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+    backgroundColor: Colors.gold + "12",
+    padding: 14,
+    borderRadius: 12,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: Colors.gold + "30",
+  },
+  intelBannerText: {
+    flex: 1,
+    fontSize: 13,
+    color: Colors.goldDark,
+    lineHeight: 19,
+  },
+  unitRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+  },
+  unitChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: Colors.card,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  unitChipActive: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+  },
+  unitChipText: {
+    fontSize: 11,
+    fontWeight: "600" as const,
+    color: Colors.textSecondary,
+  },
+  unitChipTextActive: {
+    color: Colors.white,
+  },
+  devStatusRow: {
+    gap: 8,
+  },
+  devStatusChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: Colors.card,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  devStatusChipActive: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+  },
+  devStatusText: {
+    fontSize: 13,
+    color: Colors.textSecondary,
+    fontWeight: "500" as const,
+  },
+  devStatusTextActive: {
+    color: Colors.white,
+  },
+  toggleRow: {
+    flexDirection: "row",
+    gap: 12,
+    marginBottom: 18,
+  },
+  toggleCard: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    padding: 14,
+    borderRadius: 12,
+    backgroundColor: Colors.card,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  toggleCardActive: {
+    borderColor: Colors.primary,
+    backgroundColor: Colors.primary + "08",
+  },
+  toggleCheck: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
+    borderColor: Colors.border,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  toggleCheckActive: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+  },
+  toggleLabel: {
+    fontSize: 13,
+    fontWeight: "600" as const,
+    color: Colors.textSecondary,
+  },
+  toggleLabelActive: {
+    color: Colors.primary,
+  },
+  chainHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  addChainBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    backgroundColor: Colors.primary + "10",
+  },
+  addChainText: {
+    fontSize: 12,
+    fontWeight: "600" as const,
+    color: Colors.primary,
+  },
+  chainEntry: {
+    backgroundColor: Colors.card,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+  },
+  chainEntryHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  chainEntryLabel: {
+    fontSize: 12,
+    fontWeight: "600" as const,
+    color: Colors.textSecondary,
+  },
+  chainInput: {
+    backgroundColor: Colors.background,
+    borderRadius: 10,
+    padding: 12,
+    fontSize: 14,
+    color: Colors.text,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    marginBottom: 8,
+  },
+  intelReviewHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 12,
+  },
+  intelReviewTitle: {
+    fontSize: 14,
+    fontWeight: "700" as const,
+    color: Colors.primary,
   },
 });
