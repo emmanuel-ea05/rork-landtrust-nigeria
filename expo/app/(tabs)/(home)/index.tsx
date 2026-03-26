@@ -409,7 +409,7 @@ export default function HomeScreen() {
               <Shield size={22} color={Colors.primary} />
             </View>
             <Text style={styles.actionLabel}>New{"\n"}Verification</Text>
-            <Text style={styles.actionSub}>₦30,000</Text>
+            <Text style={styles.actionSub}>From ₦30k</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.actionCard}

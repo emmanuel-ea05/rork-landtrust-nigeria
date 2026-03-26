@@ -25,6 +25,11 @@ import {
   ExternalLink,
   Database,
   ChevronRight,
+  ShieldCheck,
+  Scale,
+  Fingerprint,
+  BadgeCheck,
+  Tag,
 } from "lucide-react-native";
 import Colors from "@/constants/colors";
 import { MOCK_VERIFICATIONS, MOCK_PROFESSIONALS, MOCK_LAND_RECORDS } from "@/mocks/data";
@@ -32,6 +37,9 @@ import {
   VerificationStatus,
   STATUS_LABELS,
   DOCUMENT_TYPE_LABELS,
+  TIER_LABELS,
+  TIER_TURNAROUND,
+  PROFESSIONAL_TYPE_LABELS,
 } from "@/types";
 import StatusBadge from "@/components/StatusBadge";
 
@@ -493,6 +501,90 @@ export default function VerificationDetailScreen() {
                 </TouchableOpacity>
               </View>
             ))}
+          </View>
+        )}
+
+        {verification.report?.trustSignals && (
+          <View style={styles.trustSection}>
+            <Text style={styles.sectionTitle}>Trust Certificate</Text>
+            <View style={styles.trustCard}>
+              <View style={styles.trustHeader}>
+                <View style={styles.trustShieldWrap}>
+                  <ShieldCheck size={28} color={Colors.primary} />
+                </View>
+                <View style={styles.trustHeaderContent}>
+                  <Text style={styles.trustTitle}>LandSecure Verified</Text>
+                  <Text style={styles.trustCaseId}>Case {verification.report.trustSignals.caseId}</Text>
+                </View>
+                <View style={styles.trustHashBadge}>
+                  <Fingerprint size={10} color={Colors.textTertiary} />
+                  <Text style={styles.trustHash}>{verification.report.trustSignals.certificateHash}</Text>
+                </View>
+              </View>
+
+              <View style={styles.trustDivider} />
+
+              <View style={styles.trustSignalRow}>
+                <BadgeCheck size={16} color={Colors.primary} />
+                <View style={styles.trustSignalContent}>
+                  <Text style={styles.trustSignalLabel}>Verified by</Text>
+                  <Text style={styles.trustSignalValue}>{verification.report.trustSignals.verifiedBy}</Text>
+                  <Text style={styles.trustSignalLicense}>
+                    {PROFESSIONAL_TYPE_LABELS[verification.report.trustSignals.verifierType]} • {verification.report.trustSignals.verifierLicense}
+                  </Text>
+                </View>
+              </View>
+
+              {verification.report.trustSignals.backedByLawyer && (
+                <View style={styles.trustSignalRow}>
+                  <Scale size={16} color={Colors.goldDark} />
+                  <View style={styles.trustSignalContent}>
+                    <Text style={styles.trustSignalLabel}>Backed by Registered Lawyer</Text>
+                    <Text style={styles.trustSignalValue}>{verification.report.trustSignals.backedByLawyer}</Text>
+                    <Text style={styles.trustSignalLicense}>
+                      Nigerian Bar Association • {verification.report.trustSignals.lawyerLicense}
+                    </Text>
+                  </View>
+                </View>
+              )}
+
+              <View style={styles.trustSignalRow}>
+                <Clock size={16} color={Colors.textSecondary} />
+                <View style={styles.trustSignalContent}>
+                  <Text style={styles.trustSignalLabel}>Verification Timestamp</Text>
+                  <Text style={styles.trustSignalValue}>
+                    {new Date(verification.report.trustSignals.verificationTimestamp).toLocaleString("en-NG", {
+                      day: "numeric",
+                      month: "long",
+                      year: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.trustFooter}>
+                <Text style={styles.trustFooterText}>
+                  This certificate is digitally signed and tamper-proof. Verify authenticity at landsecure.ng/cert/{verification.report.trustSignals.certificateHash}
+                </Text>
+              </View>
+            </View>
+          </View>
+        )}
+
+        {verification.tier && (
+          <View style={styles.tierInfoSection}>
+            <View style={styles.tierInfoRow}>
+              <Tag size={14} color={Colors.primary} />
+              <Text style={styles.tierInfoLabel}>Plan:</Text>
+              <Text style={styles.tierInfoValue}>{TIER_LABELS[verification.tier]}</Text>
+            </View>
+            <View style={styles.tierInfoRow}>
+              <Clock size={14} color={Colors.textSecondary} />
+              <Text style={styles.tierInfoLabel}>Turnaround:</Text>
+              <Text style={styles.tierInfoValue}>{TIER_TURNAROUND[verification.tier]}</Text>
+            </View>
           </View>
         )}
 
@@ -1242,6 +1334,137 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.textSecondary,
     marginTop: 2,
+  },
+  trustSection: {
+    paddingHorizontal: 16,
+    marginTop: 24,
+  },
+  trustCard: {
+    backgroundColor: Colors.card,
+    borderRadius: 16,
+    padding: 18,
+    borderWidth: 1.5,
+    borderColor: Colors.primary + "30",
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  trustHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  trustShieldWrap: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: Colors.primary + "10",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  trustHeaderContent: {
+    flex: 1,
+  },
+  trustTitle: {
+    fontSize: 17,
+    fontWeight: "800" as const,
+    color: Colors.primary,
+  },
+  trustCaseId: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    fontWeight: "600" as const,
+    marginTop: 2,
+  },
+  trustHashBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: Colors.background,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+  },
+  trustHash: {
+    fontSize: 9,
+    fontWeight: "700" as const,
+    color: Colors.textTertiary,
+    fontFamily: "monospace",
+    letterSpacing: 0.5,
+  },
+  trustDivider: {
+    height: 1,
+    backgroundColor: Colors.borderLight,
+    marginVertical: 16,
+  },
+  trustSignalRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 12,
+    marginBottom: 14,
+  },
+  trustSignalContent: {
+    flex: 1,
+  },
+  trustSignalLabel: {
+    fontSize: 11,
+    color: Colors.textTertiary,
+    fontWeight: "500" as const,
+    textTransform: "uppercase" as const,
+    letterSpacing: 0.5,
+    marginBottom: 2,
+  },
+  trustSignalValue: {
+    fontSize: 15,
+    fontWeight: "700" as const,
+    color: Colors.text,
+  },
+  trustSignalLicense: {
+    fontSize: 11,
+    color: Colors.textSecondary,
+    marginTop: 2,
+  },
+  trustFooter: {
+    backgroundColor: Colors.background,
+    borderRadius: 10,
+    padding: 12,
+    marginTop: 4,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+  },
+  trustFooterText: {
+    fontSize: 10,
+    color: Colors.textTertiary,
+    lineHeight: 15,
+    textAlign: "center" as const,
+  },
+  tierInfoSection: {
+    marginHorizontal: 16,
+    marginTop: 16,
+    backgroundColor: Colors.card,
+    borderRadius: 12,
+    padding: 14,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+  },
+  tierInfoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  tierInfoLabel: {
+    fontSize: 13,
+    color: Colors.textSecondary,
+  },
+  tierInfoValue: {
+    fontSize: 13,
+    fontWeight: "700" as const,
+    color: Colors.text,
   },
   bottomSpacer: {
     height: 20,

@@ -1,8 +1,8 @@
 import React from "react";
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
-import { MapPin, FileText, ChevronRight } from "lucide-react-native";
+import { MapPin, ChevronRight, ShieldCheck, Tag } from "lucide-react-native";
 import Colors from "@/constants/colors";
-import { VerificationRequest } from "@/types";
+import { VerificationRequest, TIER_LABELS } from "@/types";
 import StatusBadge from "./StatusBadge";
 
 interface VerificationCardProps {
@@ -42,8 +42,10 @@ export default function VerificationCard({ verification, onPress }: Verification
       <View style={styles.footer}>
         <StatusBadge status={verification.status} />
         <View style={styles.footerRight}>
-          <FileText size={12} color={Colors.textTertiary} />
-          <Text style={styles.docCount}>{verification.documents.length} docs</Text>
+          <View style={styles.tierBadge}>
+            <Tag size={10} color={Colors.primary} />
+            <Text style={styles.tierText}>{TIER_LABELS[verification.tier]}</Text>
+          </View>
           <Text style={styles.date}>{dateStr}</Text>
         </View>
       </View>
@@ -51,6 +53,20 @@ export default function VerificationCard({ verification, onPress }: Verification
       {verification.sellerName ? (
         <Text style={styles.seller}>Seller: {verification.sellerName}</Text>
       ) : null}
+
+      {verification.report?.trustSignals && (
+        <View style={styles.trustRow}>
+          <ShieldCheck size={12} color={Colors.primary} />
+          <Text style={styles.trustText}>
+            Verified by {verification.report.trustSignals.verifiedBy}
+          </Text>
+          {verification.report.trustSignals.backedByLawyer && (
+            <Text style={styles.trustLawyer}>
+              • {verification.report.trustSignals.backedByLawyer}
+            </Text>
+          )}
+        </View>
+      )}
     </TouchableOpacity>
   );
 }
@@ -115,5 +131,39 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.textTertiary,
     marginTop: 8,
+  },
+  tierBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: Colors.primary + "10",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  tierText: {
+    fontSize: 10,
+    fontWeight: "700" as const,
+    color: Colors.primary,
+  },
+  trustRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    marginTop: 10,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: Colors.borderLight,
+    flexWrap: "wrap",
+  },
+  trustText: {
+    fontSize: 11,
+    fontWeight: "600" as const,
+    color: Colors.primary,
+  },
+  trustLawyer: {
+    fontSize: 11,
+    color: Colors.textSecondary,
+    fontWeight: "500" as const,
   },
 });

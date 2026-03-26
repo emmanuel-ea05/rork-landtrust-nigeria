@@ -36,6 +36,32 @@ export interface UploadedDocument {
   uploadedAt: string;
 }
 
+export type VerificationTier = "basic" | "full_diligence" | "priority";
+
+export const TIER_LABELS: Record<VerificationTier, string> = {
+  basic: "Basic Check",
+  full_diligence: "Full Due Diligence",
+  priority: "Priority (24hr)",
+};
+
+export const TIER_PRICES: Record<VerificationTier, number> = {
+  basic: 30000,
+  full_diligence: 150000,
+  priority: 200000,
+};
+
+export const TIER_DESCRIPTIONS: Record<VerificationTier, string> = {
+  basic: "C of O check, survey verification, basic ownership search",
+  full_diligence: "Full title chain, court dispute search, field inspection, lawyer review, detailed risk analysis",
+  priority: "Everything in Full Due Diligence + 24-hour turnaround, dedicated team, direct lawyer hotline",
+};
+
+export const TIER_TURNAROUND: Record<VerificationTier, string> = {
+  basic: "5–7 business days",
+  full_diligence: "7–14 business days",
+  priority: "24 hours",
+};
+
 export interface VerificationRequest {
   id: string;
   plotNumber: string;
@@ -56,6 +82,18 @@ export interface VerificationRequest {
   report?: VerificationReport;
   fee: number;
   paid: boolean;
+  tier: VerificationTier;
+}
+
+export interface TrustSignal {
+  verifiedBy: string;
+  verifierLicense: string;
+  verifierType: ProfessionalType;
+  backedByLawyer?: string;
+  lawyerLicense?: string;
+  verificationTimestamp: string;
+  caseId: string;
+  certificateHash: string;
 }
 
 export interface VerificationReport {
@@ -67,6 +105,7 @@ export interface VerificationReport {
   riskScore: number;
   summary: string;
   generatedAt: string;
+  trustSignals?: TrustSignal;
 }
 
 export interface Professional {

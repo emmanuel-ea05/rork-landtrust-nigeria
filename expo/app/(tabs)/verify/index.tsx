@@ -23,10 +23,19 @@ import {
   CreditCard,
   Info,
   Lock,
+  Zap,
 } from "lucide-react-native";
 import Colors from "@/constants/colors";
 import { DISTRICTS } from "@/mocks/data";
-import { DocumentType, DOCUMENT_TYPE_LABELS } from "@/types";
+import {
+  DocumentType,
+  DOCUMENT_TYPE_LABELS,
+  VerificationTier,
+  TIER_LABELS,
+  TIER_PRICES,
+  TIER_DESCRIPTIONS,
+  TIER_TURNAROUND,
+} from "@/types";
 
 type Step = 1 | 2 | 3 | 4;
 
@@ -60,7 +69,7 @@ export default function VerifyScreen() {
   const [selectedDocs, setSelectedDocs] = useState<DocumentType[]>([]);
   const [showDistrictPicker, setShowDistrictPicker] = useState(false);
   const [additionalNotes, setAdditionalNotes] = useState("");
-  const [urgentRequest, setUrgentRequest] = useState(false);
+  const [selectedTier, setSelectedTier] = useState<VerificationTier>("basic");
   const progressAnim = useRef(new Animated.Value(0.25)).current;
 
   const animateProgress = useCallback(
@@ -119,7 +128,7 @@ export default function VerifyScreen() {
     }
   }, [currentStep, goToStep]);
 
-  const verificationFee = urgentRequest ? 50000 : 30000;
+  const verificationFee = TIER_PRICES[selectedTier];
 
   const handleSubmit = useCallback(() => {
     console.log("[VerifyScreen] Submitting verification request", {
@@ -127,11 +136,11 @@ export default function VerifyScreen() {
       selectedDistrict,
       sellerName,
       selectedDocs,
-      urgentRequest,
+      selectedTier,
     });
     Alert.alert(
       "Verification Submitted",
-      `Your verification request for ${plotNumber} in ${selectedDistrict} has been submitted successfully.\n\nCase ID: VR-${Date.now().toString().slice(-6)}\n\nFee: ₦${verificationFee.toLocaleString()}\n\nYou will be notified once a professional is assigned to your case.`,
+      `Your verification request for ${plotNumber} in ${selectedDistrict} has been submitted successfully.\n\nCase ID: VR-${Date.now().toString().slice(-6)}\nPlan: ${TIER_LABELS[selectedTier]}\nFee: ₦${verificationFee.toLocaleString()}\nTurnaround: ${TIER_TURNAROUND[selectedTier]}\n\nYou will be notified once a professional is assigned to your case.`,
       [
         {
           text: "View Activity",
@@ -148,7 +157,7 @@ export default function VerifyScreen() {
             setLongitude("");
             setSelectedDocs([]);
             setAdditionalNotes("");
-            setUrgentRequest(false);
+            setSelectedTier("basic");
           },
         },
         {
@@ -165,12 +174,12 @@ export default function VerifyScreen() {
             setLongitude("");
             setSelectedDocs([]);
             setAdditionalNotes("");
-            setUrgentRequest(false);
+            setSelectedTier("basic");
           },
         },
       ]
     );
-  }, [plotNumber, selectedDistrict, sellerName, selectedDocs, urgentRequest, animateProgress, verificationFee]);
+  }, [plotNumber, selectedDistrict, sellerName, selectedDocs, selectedTier, animateProgress, verificationFee]);
 
   const selectedDistrictData = DISTRICTS.find((d) => d.name === selectedDistrict);
 
@@ -562,45 +571,93 @@ export default function VerifyScreen() {
         </View>
       </View>
 
-      <TouchableOpacity
-        style={styles.urgentToggle}
-        onPress={() => setUrgentRequest(!urgentRequest)}
-        activeOpacity={0.7}
-      >
-        <View
-          style={[
-            styles.urgentCheckbox,
-            urgentRequest && styles.urgentCheckboxActive,
-          ]}
-        >
-          {urgentRequest && <CheckCircle size={16} color={Colors.white} />}
-        </View>
-        <View style={styles.urgentContent}>
-          <Text style={styles.urgentLabel}>Express Verification</Text>
-          <Text style={styles.urgentDesc}>
-            Priority processing within 48 hours (+₦20,000)
-          </Text>
-        </View>
-      </TouchableOpacity>
+      <Text style={styles.tierSectionTitle}>Select Verification Plan</Text>
+      {(["basic", "full_diligence", "priority"] as VerificationTier[]).map((tier) => {
+        const isSelected = selectedTier === tier;
+        const price = TIER_PRICES[tier];
+        const isPriority = tier === "priority";
+        const isFullDiligence = tier === "full_diligence";
+        return (
+          <TouchableOpacity
+            key={tier}
+            style={[
+              styles.tierCard,
+              isSelected && styles.tierCardActive,
+              isPriority && styles.tierCardPriority,
+              isFullDiligence && isSelected && styles.tierCardDiligenceActive,
+            ]}
+            onPress={() => setSelectedTier(tier)}
+            activeOpacity={0.7}
+          >
+            <View style={styles.tierHeader}>
+              <View style={styles.tierLeft}>
+                <View
+                  style={[
+                    styles.tierRadio,
+                    isSelected && styles.tierRadioActive,
+                    isPriority && isSelected && styles.tierRadioPriority,
+                  ]}
+                >
+                  {isSelected && <View style={styles.tierRadioDot} />}
+                </View>
+                <View style={styles.tierInfo}>
+                  <View style={styles.tierLabelRow}>
+                    <Text
+                      style={[
+                        styles.tierLabel,
+                        isSelected && styles.tierLabelActive,
+                      ]}
+                    >
+                      {TIER_LABELS[tier]}
+                    </Text>
+                    {isPriority && (
+                      <View style={styles.fastBadge}>
+                        <Zap size={10} color={Colors.white} />
+                        <Text style={styles.fastBadgeText}>FAST</Text>
+                      </View>
+                    )}
+                    {isFullDiligence && (
+                      <View style={styles.recommendedBadge}>
+                        <Text style={styles.recommendedText}>RECOMMENDED</Text>
+                      </View>
+                    )}
+                  </View>
+                  <Text style={styles.tierDesc}>{TIER_DESCRIPTIONS[tier]}</Text>
+                  <Text style={styles.tierTurnaround}>
+                    Turnaround: {TIER_TURNAROUND[tier]}
+                  </Text>
+                </View>
+              </View>
+              <Text
+                style={[
+                  styles.tierPrice,
+                  isSelected && styles.tierPriceActive,
+                  isPriority && isSelected && styles.tierPricePriority,
+                ]}
+              >
+                ₦{price.toLocaleString()}
+              </Text>
+            </View>
+          </TouchableOpacity>
+        );
+      })}
 
       <View style={styles.feeCard}>
         <View style={styles.feeTop}>
-          <Text style={styles.feeLabel}>Verification Fee</Text>
+          <Text style={styles.feeLabel}>Total</Text>
           <Text style={styles.feeAmount}>
             ₦{verificationFee.toLocaleString()}
           </Text>
         </View>
         <View style={styles.feeBreakdown}>
           <View style={styles.feeRow}>
-            <Text style={styles.feeRowLabel}>Standard verification</Text>
-            <Text style={styles.feeRowValue}>₦30,000</Text>
+            <Text style={styles.feeRowLabel}>{TIER_LABELS[selectedTier]}</Text>
+            <Text style={styles.feeRowValue}>₦{verificationFee.toLocaleString()}</Text>
           </View>
-          {urgentRequest && (
-            <View style={styles.feeRow}>
-              <Text style={styles.feeRowLabel}>Express processing</Text>
-              <Text style={styles.feeRowValue}>₦20,000</Text>
-            </View>
-          )}
+          <View style={styles.feeRow}>
+            <Text style={styles.feeRowLabel}>Turnaround</Text>
+            <Text style={styles.feeRowValue}>{TIER_TURNAROUND[selectedTier]}</Text>
+          </View>
         </View>
       </View>
 
@@ -1004,42 +1061,131 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.borderLight,
     marginVertical: 10,
   },
-  urgentToggle: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    backgroundColor: Colors.gold + "10",
+  tierSectionTitle: {
+    fontSize: 15,
+    fontWeight: "700" as const,
+    color: Colors.text,
+    marginTop: 16,
+    marginBottom: 12,
+  },
+  tierCard: {
     borderRadius: 14,
     padding: 16,
-    marginTop: 16,
-    borderWidth: 1,
-    borderColor: Colors.gold + "30",
+    marginBottom: 10,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+    backgroundColor: Colors.card,
   },
-  urgentCheckbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: Colors.gold,
-    justifyContent: "center",
-    alignItems: "center",
+  tierCardActive: {
+    borderColor: Colors.primary,
+    backgroundColor: Colors.primary + "06",
   },
-  urgentCheckboxActive: {
-    backgroundColor: Colors.gold,
-    borderColor: Colors.gold,
+  tierCardPriority: {
+    borderColor: Colors.gold + "60",
   },
-  urgentContent: {
+  tierCardDiligenceActive: {
+    borderColor: Colors.primary,
+  },
+  tierHeader: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+  },
+  tierLeft: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 12,
     flex: 1,
   },
-  urgentLabel: {
-    fontSize: 14,
-    fontWeight: "700" as const,
-    color: Colors.goldDark,
+  tierRadio: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
+    borderColor: Colors.border,
+    justifyContent: "center",
+    alignItems: "center",
+    marginTop: 2,
   },
-  urgentDesc: {
+  tierRadioActive: {
+    borderColor: Colors.primary,
+  },
+  tierRadioPriority: {
+    borderColor: Colors.gold,
+  },
+  tierRadioDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: Colors.primary,
+  },
+  tierInfo: {
+    flex: 1,
+  },
+  tierLabelRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 4,
+  },
+  tierLabel: {
+    fontSize: 15,
+    fontWeight: "700" as const,
+    color: Colors.text,
+  },
+  tierLabelActive: {
+    color: Colors.primary,
+  },
+  fastBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    backgroundColor: Colors.gold,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  fastBadgeText: {
+    fontSize: 9,
+    fontWeight: "800" as const,
+    color: Colors.white,
+    letterSpacing: 0.5,
+  },
+  recommendedBadge: {
+    backgroundColor: Colors.primary + "15",
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  recommendedText: {
+    fontSize: 9,
+    fontWeight: "800" as const,
+    color: Colors.primary,
+    letterSpacing: 0.5,
+  },
+  tierDesc: {
     fontSize: 12,
     color: Colors.textSecondary,
-    marginTop: 2,
+    lineHeight: 17,
+    marginBottom: 4,
+  },
+  tierTurnaround: {
+    fontSize: 11,
+    color: Colors.textTertiary,
+    fontWeight: "500" as const,
+    fontStyle: "italic" as const,
+  },
+  tierPrice: {
+    fontSize: 16,
+    fontWeight: "800" as const,
+    color: Colors.text,
+    marginLeft: 8,
+  },
+  tierPriceActive: {
+    color: Colors.primary,
+  },
+  tierPricePriority: {
+    color: Colors.goldDark,
   },
   feeCard: {
     backgroundColor: Colors.primary,

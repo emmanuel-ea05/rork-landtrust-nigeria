@@ -33,6 +33,7 @@ export const MOCK_VERIFICATIONS: VerificationRequest[] = [
     assignedProfessionals: ["p1", "p3"],
     fee: 30000,
     paid: true,
+    tier: "basic",
   },
   {
     id: "VR-002",
@@ -49,8 +50,9 @@ export const MOCK_VERIFICATIONS: VerificationRequest[] = [
     updatedAt: "2026-03-14T16:30:00Z",
     assignedProfessionals: ["p1", "p2", "p4"],
     riskScore: 15,
-    fee: 30000,
+    fee: 150000,
     paid: true,
+    tier: "full_diligence",
     report: {
       id: "RPT-002",
       titleAuthenticity: "verified",
@@ -60,6 +62,16 @@ export const MOCK_VERIFICATIONS: VerificationRequest[] = [
       riskScore: 15,
       summary: "This property has been fully verified. The Certificate of Occupancy is authentic and matches records at the Abuja Geographic Information Systems (AGIS). No encumbrances or disputes found.",
       generatedAt: "2026-03-14T16:30:00Z",
+      trustSignals: {
+        verifiedBy: "Surv. Abubakar Musa",
+        verifierLicense: "NIS/FCT/2019/0342",
+        verifierType: "surveyor",
+        backedByLawyer: "Barr. Ngozi Eze",
+        lawyerLicense: "NBA/ABJ/2015/1187",
+        verificationTimestamp: "2026-03-14T16:30:00Z",
+        caseId: "VR-002",
+        certificateHash: "a7f3c9d1e8b24a6f",
+      },
     },
   },
   {
@@ -77,6 +89,7 @@ export const MOCK_VERIFICATIONS: VerificationRequest[] = [
     assignedProfessionals: ["p1"],
     fee: 30000,
     paid: true,
+    tier: "basic",
   },
   {
     id: "VR-004",
@@ -95,6 +108,7 @@ export const MOCK_VERIFICATIONS: VerificationRequest[] = [
     assignedProfessionals: [],
     fee: 30000,
     paid: false,
+    tier: "basic",
   },
   {
     id: "VR-005",
@@ -110,8 +124,9 @@ export const MOCK_VERIFICATIONS: VerificationRequest[] = [
     updatedAt: "2026-03-13T11:00:00Z",
     assignedProfessionals: ["p2", "p3"],
     riskScore: 82,
-    fee: 30000,
+    fee: 200000,
     paid: true,
+    tier: "priority",
     report: {
       id: "RPT-005",
       titleAuthenticity: "suspicious",
@@ -121,6 +136,16 @@ export const MOCK_VERIFICATIONS: VerificationRequest[] = [
       riskScore: 82,
       summary: "WARNING: This property shows significant red flags. The allocation letter could not be verified with AGIS records. Survey coordinates do not match the stated plot. There is an active ownership dispute in court. Part of this area is under government acquisition.",
       generatedAt: "2026-03-13T11:00:00Z",
+      trustSignals: {
+        verifiedBy: "Barr. Ngozi Eze",
+        verifierLicense: "NBA/ABJ/2015/1187",
+        verifierType: "lawyer",
+        backedByLawyer: "Barr. Chukwuemeka Obi",
+        lawyerLicense: "NBA/ABJ/2013/0893",
+        verificationTimestamp: "2026-03-13T11:00:00Z",
+        caseId: "VR-005",
+        certificateHash: "e2b8f4a1c7d93e5b",
+      },
     },
   },
 ];
