@@ -30,7 +30,10 @@ import {
   Ruler,
   Landmark,
   Home,
+  Skull,
+  ScanLine,
 } from "lucide-react-native";
+import { useRouter } from "expo-router";
 import Colors from "@/constants/colors";
 import { DISTRICTS } from "@/mocks/data";
 import {
@@ -75,6 +78,7 @@ const DOC_DESCRIPTIONS: Record<DocumentType, string> = {
 const STEP_ICONS = [MapPin, User, Database, FileText, Shield] as const;
 
 export default function VerifyScreen() {
+  const router = useRouter();
   const [currentStep, setCurrentStep] = useState<Step>(1);
   const [plotNumber, setPlotNumber] = useState("");
   const [selectedDistrict, setSelectedDistrict] = useState("");
@@ -968,6 +972,26 @@ export default function VerifyScreen() {
         {currentStep === 3 && renderStep3()}
         {currentStep === 4 && renderStep4()}
         {currentStep === 5 && renderStep5()}
+      <View style={styles.fraudHero}>
+          <View style={styles.fraudHeroBadge}>
+            <Skull size={12} color={Colors.danger} />
+            <Text style={styles.fraudHeroBadgeText}>LAND FRAUD ALERT</Text>
+          </View>
+          <Text style={styles.fraudHeroTitle}>This land could{"\n"}be a scam.</Text>
+          <Text style={styles.fraudHeroSubtitle}>
+            ₦4.2 billion lost to land fraud in Abuja every year. Check before you lose millions.
+          </Text>
+          <TouchableOpacity
+            style={styles.fraudHeroCta}
+            onPress={() => router.push("/fraud-scan")}
+            activeOpacity={0.8}
+            testID="verify-fraud-scan"
+          >
+            <ScanLine size={18} color={Colors.white} />
+            <Text style={styles.fraudHeroCtaText}>Instant Fraud Risk Score — Free</Text>
+          </TouchableOpacity>
+          <Text style={styles.fraudHeroFootnote}>Takes 30 seconds · No payment required</Text>
+        </View>
       </ScrollView>
 
       <View style={styles.bottomBar}>
@@ -1533,6 +1557,66 @@ const styles = StyleSheet.create({
   securityNoteText: {
     fontSize: 11,
     color: Colors.textTertiary,
+  },
+  fraudHero: {
+    backgroundColor: "#1A1A1A",
+    marginHorizontal: 20,
+    marginTop: 24,
+    marginBottom: 20,
+    borderRadius: 20,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: Colors.danger + "30",
+  },
+  fraudHeroBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: Colors.danger + "18",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 10,
+    alignSelf: "flex-start",
+    marginBottom: 14,
+  },
+  fraudHeroBadgeText: {
+    fontSize: 10,
+    fontWeight: "800" as const,
+    color: Colors.danger,
+    letterSpacing: 0.8,
+  },
+  fraudHeroTitle: {
+    fontSize: 28,
+    fontWeight: "900" as const,
+    color: Colors.white,
+    lineHeight: 34,
+    marginBottom: 8,
+  },
+  fraudHeroSubtitle: {
+    fontSize: 14,
+    color: "#999999",
+    lineHeight: 21,
+    marginBottom: 20,
+  },
+  fraudHeroCta: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: Colors.danger,
+    paddingVertical: 14,
+    borderRadius: 12,
+    marginBottom: 10,
+  },
+  fraudHeroCtaText: {
+    fontSize: 15,
+    fontWeight: "700" as const,
+    color: Colors.white,
+  },
+  fraudHeroFootnote: {
+    fontSize: 12,
+    color: "#666666",
+    textAlign: "center" as const,
   },
   bottomBar: {
     flexDirection: "row",

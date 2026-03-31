@@ -28,10 +28,9 @@ import {
   Eye,
   Share2,
   Fingerprint,
-  Skull,
-  ScanLine,
   ShieldCheck,
   Lock,
+  ScanLine,
 } from "lucide-react-native";
 import Colors from "@/constants/colors";
 import { MOCK_VERIFICATIONS, MOCK_PROFESSIONALS, MOCK_LAND_RECORDS, PLATFORM_STATS } from "@/mocks/data";
@@ -192,32 +191,6 @@ export default function HomeScreen() {
         />
       }
     >
-      <Animated.View
-        style={[
-          styles.fraudHero,
-          { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
-        ]}
-      >
-        <View style={styles.fraudHeroBadge}>
-          <Skull size={12} color={Colors.danger} />
-          <Text style={styles.fraudHeroBadgeText}>LAND FRAUD ALERT</Text>
-        </View>
-        <Text style={styles.fraudHeroTitle}>This land could{"\n"}be a scam.</Text>
-        <Text style={styles.fraudHeroSubtitle}>
-          ₦4.2 billion lost to land fraud in Abuja every year. Check before you lose millions.
-        </Text>
-        <TouchableOpacity
-          style={styles.fraudHeroCta}
-          onPress={handleFraudScan}
-          activeOpacity={0.8}
-          testID="home-fraud-scan"
-        >
-          <ScanLine size={18} color={Colors.white} />
-          <Text style={styles.fraudHeroCtaText}>Instant Fraud Risk Score — Free</Text>
-        </TouchableOpacity>
-        <Text style={styles.fraudHeroFootnote}>Takes 30 seconds · No payment required</Text>
-      </Animated.View>
-
       <Animated.View
         style={[
           styles.heroSection,
